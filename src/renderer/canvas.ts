@@ -25,6 +25,7 @@ class CanvasManager {
     private currentMousePos = { x: 0, y: 0 };
     private draggedNode: CanvasNode | null = null;
     private selectedNode: CanvasNode | null = null;
+    private selectedConnection: Connection | null = null;
     private dragOffset = { x: 0, y: 0 };
     private dpr: number;
     
@@ -196,6 +197,8 @@ class CanvasManager {
                 this.isDrawingConnection = true;
                 this.connectionStartNode = node;
                 this.currentMousePos = { x, y };
+                this.selectedNode = null;
+                this.selectedConnection = null;
                 return;
             }
             
@@ -204,19 +207,35 @@ class CanvasManager {
                 this.isDrawingConnection = true;
                 this.connectionStartNode = node;
                 this.currentMousePos = { x, y };
+                this.selectedNode = null;
+                this.selectedConnection = null;
                 return;
             }
         }
 
-        // If not starting a connection, handle regular node dragging
+        // Check if clicking on a connection
+        const connection = this.getConnectionAtPosition(x, y);
+        if (connection) {
+            this.selectedConnection = connection;
+            this.selectedNode = null;
+            this.draw();
+            return;
+        }
+
+        // If not starting a connection or selecting an edge, handle regular node dragging
         const node = this.getNodeAtPosition(x, y);
         this.selectedNode = node;
+        this.selectedConnection = null;
         
         if (node) {
             this.isDragging = true;
             this.draggedNode = node;
             this.dragOffset.x = x - node.x;
             this.dragOffset.y = y - node.y;
+        } else {
+            // Clear selection when clicking on empty space
+            this.selectedNode = null;
+            this.selectedConnection = null;
         }
         
         this.draw();
@@ -274,6 +293,10 @@ class CanvasManager {
             const toX = connection.toNode.x + connection.toNode.width / 2;
             const toY = connection.toNode.y;
             
+            // Set line style based on selection
+            this.ctx.strokeStyle = connection === this.selectedConnection ? '#ff0000' : '#666';
+            this.ctx.lineWidth = connection === this.selectedConnection ? 3 : 2;
+            
             this.drawConnectionLine(fromX, fromY, toX, toY);
         }
     }
@@ -297,9 +320,53 @@ class CanvasManager {
             toX, toY                        // End point
         );
 
-        this.ctx.strokeStyle = '#666';
-        this.ctx.lineWidth = 2;
         this.ctx.stroke();
+    }
+
+    private isPointNearCurve(x: number, y: number, fromX: number, fromY: number, toX: number, toY: number): boolean {
+        const distance = Math.abs(toY - fromY);
+        const controlPoint1Y = fromY + distance * 0.5;
+        const controlPoint2Y = toY - distance * 0.5;
+        
+        // Check multiple points along the curve
+        const steps = 20;
+        const threshold = 5; // Distance threshold in pixels
+        
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            // Cubic Bezier curve formula
+            const curveX = Math.pow(1 - t, 3) * fromX +
+                          3 * Math.pow(1 - t, 2) * t * fromX +
+                          3 * (1 - t) * Math.pow(t, 2) * toX +
+                          Math.pow(t, 3) * toX;
+            const curveY = Math.pow(1 - t, 3) * fromY +
+                          3 * Math.pow(1 - t, 2) * t * controlPoint1Y +
+                          3 * (1 - t) * Math.pow(t, 2) * controlPoint2Y +
+                          Math.pow(t, 3) * toY;
+            
+            const dx = x - curveX;
+            const dy = y - curveY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < threshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private getConnectionAtPosition(x: number, y: number): Connection | null {
+        for (const connection of this.connections) {
+            const fromX = connection.fromNode.x + connection.fromNode.width / 2;
+            const fromY = connection.fromNode.y + connection.fromNode.height;
+            const toX = connection.toNode.x + connection.toNode.width / 2;
+            const toY = connection.toNode.y;
+            
+            if (this.isPointNearCurve(x, y, fromX, fromY, toX, toY)) {
+                return connection;
+            }
+        }
+        return null;
     }
 }
 
