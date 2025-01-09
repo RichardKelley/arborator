@@ -9,11 +9,20 @@ interface CanvasNode {
     has_children: boolean;
 }
 
+interface Connection {
+    fromNode: CanvasNode;
+    toNode: CanvasNode;
+}
+
 class CanvasManager {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private nodes: CanvasNode[] = [];
+    private connections: Connection[] = [];
     private isDragging = false;
+    private isDrawingConnection = false;
+    private connectionStartNode: CanvasNode | null = null;
+    private currentMousePos = { x: 0, y: 0 };
     private draggedNode: CanvasNode | null = null;
     private selectedNode: CanvasNode | null = null;
     private dragOffset = { x: 0, y: 0 };
@@ -23,6 +32,7 @@ class CanvasManager {
     private static readonly NODE_HEIGHT = 50;
     private static readonly MIN_NODE_WIDTH = 150;
     private static readonly TEXT_PADDING = 20; // Padding on each side of the text
+    private static readonly CONNECTION_POINT_RADIUS = 5;
 
     constructor() {
         this.canvas = document.getElementById('tree-canvas') as HTMLCanvasElement;
@@ -83,6 +93,20 @@ class CanvasManager {
         // Set up scaling for high DPI
         this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         
+        // Draw all connections first (so they appear behind nodes)
+        this.drawConnections();
+        
+        // Draw temporary connection line if we're drawing one
+        if (this.isDrawingConnection && this.connectionStartNode) {
+            this.drawConnectionLine(
+                this.connectionStartNode.x + this.connectionStartNode.width / 2,
+                this.connectionStartNode.y,
+                this.currentMousePos.x,
+                this.currentMousePos.y
+            );
+        }
+        
+        // Draw all nodes
         for (const node of this.nodes) {
             this.drawNode(node);
         }
@@ -153,14 +177,39 @@ class CanvasManager {
         return null;
     }
 
+    private isOverConnectionPoint(node: CanvasNode, x: number, y: number, isTop: boolean): boolean {
+        const centerX = node.x + node.width / 2;
+        const centerY = isTop ? node.y : node.y + node.height;
+        const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        return distance <= CanvasManager.CONNECTION_POINT_RADIUS;
+    }
+
     private handleMouseDown(e: MouseEvent) {
         const rect = this.canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left);
         const y = (e.clientY - rect.top);
 
+        // Check if we're clicking on any node's connection points
+        for (const node of this.nodes) {
+            // Check top connection point
+            if (this.isOverConnectionPoint(node, x, y, true)) {
+                this.isDrawingConnection = true;
+                this.connectionStartNode = node;
+                this.currentMousePos = { x, y };
+                return;
+            }
+            
+            // Check bottom connection point if node has children
+            if (node.has_children && this.isOverConnectionPoint(node, x, y, false)) {
+                this.isDrawingConnection = true;
+                this.connectionStartNode = node;
+                this.currentMousePos = { x, y };
+                return;
+            }
+        }
+
+        // If not starting a connection, handle regular node dragging
         const node = this.getNodeAtPosition(x, y);
-        
-        // Update selected node - set to null if clicking empty space
         this.selectedNode = node;
         
         if (node) {
@@ -174,20 +223,83 @@ class CanvasManager {
     }
 
     private handleMouseMove(e: MouseEvent) {
-        if (this.isDragging && this.draggedNode) {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left);
-            const y = (e.clientY - rect.top);
+        const rect = this.canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left);
+        const y = (e.clientY - rect.top);
 
+        if (this.isDrawingConnection) {
+            this.currentMousePos = { x, y };
+            this.draw();
+            return;
+        }
+
+        if (this.isDragging && this.draggedNode) {
             this.draggedNode.x = x - this.dragOffset.x;
             this.draggedNode.y = y - this.dragOffset.y;
             this.draw();
         }
     }
 
-    private handleMouseUp() {
+    private handleMouseUp(e: MouseEvent) {
+        if (this.isDrawingConnection && this.connectionStartNode) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left);
+            const y = (e.clientY - rect.top);
+
+            // Check if we're over any node's top connection point
+            for (const node of this.nodes) {
+                if (node !== this.connectionStartNode && 
+                    this.isOverConnectionPoint(node, x, y, true)) {
+                    // Create the connection
+                    this.connections.push({
+                        fromNode: this.connectionStartNode,
+                        toNode: node
+                    });
+                    break;
+                }
+            }
+        }
+
         this.isDragging = false;
+        this.isDrawingConnection = false;
+        this.connectionStartNode = null;
         this.draggedNode = null;
+        this.draw();
+    }
+
+    private drawConnections() {
+        for (const connection of this.connections) {
+            const fromX = connection.fromNode.x + connection.fromNode.width / 2;
+            const fromY = connection.fromNode.y + connection.fromNode.height;
+            const toX = connection.toNode.x + connection.toNode.width / 2;
+            const toY = connection.toNode.y;
+            
+            this.drawConnectionLine(fromX, fromY, toX, toY);
+        }
+    }
+
+    private drawConnectionLine(fromX: number, fromY: number, toX: number, toY: number) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromX, fromY);
+
+        // Calculate control points for the quadratic Bézier curve
+        // We'll extend the curve vertically from both points for a natural flow
+        const distance = Math.abs(toY - fromY);
+        const controlPoint1X = fromX;
+        const controlPoint1Y = fromY + distance * 0.5;
+        const controlPoint2X = toX;
+        const controlPoint2Y = toY - distance * 0.5;
+
+        // Draw a cubic Bézier curve
+        this.ctx.bezierCurveTo(
+            controlPoint1X, controlPoint1Y,  // First control point
+            controlPoint2X, controlPoint2Y,  // Second control point
+            toX, toY                        // End point
+        );
+
+        this.ctx.strokeStyle = '#666';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
     }
 }
 
