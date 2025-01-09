@@ -13,6 +13,7 @@ class CanvasManager {
     private ctx: CanvasRenderingContext2D;
     private nodes: CanvasNode[] = [];
     private isDragging = false;
+    private draggedNode: CanvasNode | null = null;
     private selectedNode: CanvasNode | null = null;
     private dragOffset = { x: 0, y: 0 };
     private dpr: number;
@@ -95,8 +96,8 @@ class CanvasManager {
         this.ctx.fillStyle = '#f0f0f0';
         this.ctx.fill();
         
-        // Stroke
-        this.ctx.strokeStyle = '#666';
+        // Stroke - red if selected, default color otherwise
+        this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
@@ -125,29 +126,35 @@ class CanvasManager {
         const y = (e.clientY - rect.top);
 
         const node = this.getNodeAtPosition(x, y);
+        
+        // Update selected node - set to null if clicking empty space
+        this.selectedNode = node;
+        
         if (node) {
             this.isDragging = true;
-            this.selectedNode = node;
+            this.draggedNode = node;
             this.dragOffset.x = x - node.x;
             this.dragOffset.y = y - node.y;
         }
+        
+        this.draw();
     }
 
     private handleMouseMove(e: MouseEvent) {
-        if (this.isDragging && this.selectedNode) {
+        if (this.isDragging && this.draggedNode) {
             const rect = this.canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left);
             const y = (e.clientY - rect.top);
 
-            this.selectedNode.x = x - this.dragOffset.x;
-            this.selectedNode.y = y - this.dragOffset.y;
+            this.draggedNode.x = x - this.dragOffset.x;
+            this.draggedNode.y = y - this.dragOffset.y;
             this.draw();
         }
     }
 
     private handleMouseUp() {
         this.isDragging = false;
-        this.selectedNode = null;
+        this.draggedNode = null;
     }
 }
 
