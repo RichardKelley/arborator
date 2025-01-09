@@ -1,6 +1,7 @@
 interface NodeType {
     name: string;
     type: string;
+    has_children: boolean;
 }
 
 interface NodeTypes {
@@ -46,7 +47,7 @@ async function initializeRibbon() {
                 button.className = 'ribbon-button';
                 button.textContent = node.name;
                 button.dataset.type = node.type;
-                button.onclick = () => (window as any).canvasManager.addNode(node.type, node.name);
+                button.onclick = () => (window as any).canvasManager.addNode(node.type, node.name, node.has_children);
                 content.appendChild(button);
             });
 

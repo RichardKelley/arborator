@@ -6,6 +6,7 @@ interface CanvasNode {
     y: number;
     width: number;
     height: number;
+    has_children: boolean;
 }
 
 class CanvasManager {
@@ -51,7 +52,7 @@ class CanvasManager {
         this.draw();
     }
 
-    addNode(type: string, name: string) {
+    addNode(type: string, name: string, has_children: boolean) {
         const node: CanvasNode = {
             id: Math.random().toString(36).substr(2, 9),
             type,
@@ -59,7 +60,8 @@ class CanvasManager {
             x: (this.canvas.width / 2 / this.dpr) - CanvasManager.NODE_WIDTH / 2,
             y: (this.canvas.height / 2 / this.dpr) - CanvasManager.NODE_HEIGHT / 2,
             width: CanvasManager.NODE_WIDTH,
-            height: CanvasManager.NODE_HEIGHT
+            height: CanvasManager.NODE_HEIGHT,
+            has_children
         };
         this.nodes.push(node);
         this.draw();
@@ -112,6 +114,17 @@ class CanvasManager {
         this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
+
+        // Draw bottom connection point circle if has_children is true
+        if (node.has_children) {
+            this.ctx.beginPath();
+            this.ctx.arc(node.x + node.width / 2, node.y + node.height, connectionPointRadius, 0, Math.PI * 2);
+            this.ctx.fillStyle = node === this.selectedNode ? '#ffcccc' : '#e0e0e0';
+            this.ctx.fill();
+            this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        }
 
         // Text
         this.ctx.fillStyle = '#000';
