@@ -45,6 +45,7 @@ async function initializeRibbon() {
                 button.className = 'ribbon-button';
                 button.textContent = node.name;
                 button.dataset.type = node.type;
+                button.onclick = () => (window as any).canvasManager.addNode(node.type, node.name);
                 content.appendChild(button);
             });
 

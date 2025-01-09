@@ -22,11 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (width >= minWidth && width <= maxWidth) {
       rightColumn.style.width = `${width}px`;
+      // Dispatch a custom event when column is resized
+      window.dispatchEvent(new CustomEvent('column-resize'));
     }
   });
 
   document.addEventListener('mouseup', () => {
     isResizing = false;
     resizer.classList.remove('dragging');
+    // Dispatch final resize event
+    window.dispatchEvent(new CustomEvent('column-resize'));
   });
 }); 
