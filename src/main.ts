@@ -57,9 +57,15 @@ function createMenu() {
 }
 
 function createWindow() {
+  const { workAreaSize } = require('electron').screen.getPrimaryDisplay()
+  
+  const width = Math.floor(workAreaSize.width * 0.9)
+  const height = Math.floor(workAreaSize.height * 0.9)
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width,
+    height,
+    center: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

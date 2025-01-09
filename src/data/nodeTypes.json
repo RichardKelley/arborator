@@ -1,39 +1,46 @@
 {
     "root": {
         "name": "Root",
-        "type": "root"
+        "type": "root",
+        "has_children": true
     },
 
     "actions" : [
         {
             "name": "GenerateAction",
-            "type": "action"
+            "type": "action",
+            "has_children": false
         },
         {
             "name": "LogLikelihoodAction",
-            "type": "action"
+            "type": "action",
+            "has_children": false
         },
         {
             "name": "LogLikelihoodRollingAction",
-            "type": "action"
+            "type": "action",
+            "has_children": false
         }
     ],
 
     "conditions" : [
         {
             "name": "LMCompletionCondition",
-            "type": "condition"
+            "type": "condition",
+            "has_children": false
         }
     ],
 
     "controls" : [
         {
             "name": "Fallback",
-            "type": "control"
+            "type": "control",
+            "has_children": true
         },
         {
             "name": "Sequence",
-            "type": "control"
+            "type": "control",
+            "has_children": true
         }
     ]
 }
