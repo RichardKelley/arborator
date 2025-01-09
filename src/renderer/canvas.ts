@@ -20,8 +20,9 @@ class CanvasManager {
     private dpr: number;
     
     // Fixed dimensions for nodes
-    private static readonly NODE_WIDTH = 150;
     private static readonly NODE_HEIGHT = 50;
+    private static readonly MIN_NODE_WIDTH = 150;
+    private static readonly TEXT_PADDING = 20; // Padding on each side of the text
 
     constructor() {
         this.canvas = document.getElementById('tree-canvas') as HTMLCanvasElement;
@@ -52,14 +53,21 @@ class CanvasManager {
         this.draw();
     }
 
+    private calculateNodeWidth(text: string): number {
+        this.ctx.font = '14px Arial';  // Match the font used in drawNode
+        const textWidth = this.ctx.measureText(text).width;
+        return Math.max(CanvasManager.MIN_NODE_WIDTH, textWidth + (CanvasManager.TEXT_PADDING * 2));
+    }
+
     addNode(type: string, name: string, has_children: boolean) {
+        const nodeWidth = this.calculateNodeWidth(name);
         const node: CanvasNode = {
             id: Math.random().toString(36).substr(2, 9),
             type,
             name,
-            x: (this.canvas.width / 2 / this.dpr) - CanvasManager.NODE_WIDTH / 2,
+            x: (this.canvas.width / 2 / this.dpr) - nodeWidth / 2,
             y: (this.canvas.height / 2 / this.dpr) - CanvasManager.NODE_HEIGHT / 2,
-            width: CanvasManager.NODE_WIDTH,
+            width: nodeWidth,
             height: CanvasManager.NODE_HEIGHT,
             has_children
         };
