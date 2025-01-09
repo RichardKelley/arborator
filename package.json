@@ -1,0 +1,39 @@
+{
+  "name": "arborator",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/electron": "^1.6.12",
+    "@types/node": "^22.10.5",
+    "copyfiles": "^2.4.1",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "start": "electron dist/main.js",
+    "build": "tsc && yarn copy-files",
+    "watch": "tsc -w",
+    "dev": "nodemon --exec electron/main.js",
+    "copy-files": "copyfiles -u 1 \"src/renderer/*.{html,css,js}\" dist/ && mkdir -p dist/data && cp src/data/nodeTypes.json dist/data/",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.arborator.app",
+    "productName": "Arborator",
+    "directories": {
+      "output": "release-builds",
+      "buildResources": "dist"
+    },
+    "files": [
+      "dist/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    }
+  }
+}

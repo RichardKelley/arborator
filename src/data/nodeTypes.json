@@ -1,0 +1,35 @@
+{
+    "actions" : [
+        {
+            "name": "GenerateAction",
+            "type": "action"
+        },
+        {
+            "name": "LogLikelihoodAction",
+            "type": "action"
+        },
+        {
+            "name": "LogLikelihoodRollingAction",
+            "type": "action"
+        }
+    ],
+
+    "conditions" : [
+        {
+            "name": "LMCompletionCondition",
+            "type": "condition"
+        }
+    ],
+
+    "controls" : [
+        {
+            "name": "Fallback",
+            "type": "control"
+        },
+        {
+            "name": "Sequence",
+            "type": "control"
+        }
+    ]
+    
+}
