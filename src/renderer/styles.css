@@ -53,13 +53,13 @@ body {
 
 .ribbon {
   background-color: #f0f0f0;
-  padding: 4px 16px 8px;
+  padding: 4px 16px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   gap: 0;
-  align-items: flex-end;
+  align-items: center;
   flex-shrink: 0;
-  height: 64px;
+  height: 52px;
 }
 
 .ribbon-group {
@@ -67,6 +67,7 @@ body {
   flex-direction: column;
   height: 100%;
   position: relative;
+  justify-content: center;
 }
 
 .ribbon-group:not(:last-child) {
@@ -77,9 +78,9 @@ body {
   content: '';
   position: absolute;
   right: -8px;
-  top: 45%;
-  transform: translateY(-40%);
-  height: 90%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 80%;
   width: 1px;
   background-color: #ccc;
 }
@@ -89,23 +90,23 @@ body {
   color: #666;
   text-align: center;
   padding: 0 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  min-height: 11px; /* Ensure consistent height even when empty */
 }
 
 .ribbon-group-content {
   display: flex;
   align-items: center;
-  height: 48px;
 }
 
 .ribbon-button {
-  padding: 8px 16px;
+  padding: 6px 16px;
   border: 1px solid #ccc;
   background-color: transparent;
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.2s;
-  height: 100%;
+  height: 28px;
   margin: 0 2px;
 }
 

@@ -4,7 +4,7 @@ interface NodeType {
 }
 
 interface NodeTypes {
-    [key: string]: NodeType[];
+    [key: string]: NodeType[] | NodeType;
 }
 
 async function initializeRibbon() {
@@ -21,22 +21,23 @@ async function initializeRibbon() {
 
         // Create a group for each category in nodeTypes
         for (const [category, nodes] of Object.entries(nodeTypes)) {
-            if (!Array.isArray(nodes)) {
-                continue;
-            }
-            
             const group = document.createElement('div');
             group.className = 'ribbon-group';
-
-            const label = document.createElement('div');
-            label.className = 'ribbon-group-label';
-            label.textContent = category.charAt(0).toUpperCase() + category.slice(1);
 
             const content = document.createElement('div');
             content.className = 'ribbon-group-content';
 
+            // Handle both single nodes and arrays of nodes
+            const nodeArray = Array.isArray(nodes) ? nodes : [nodes];
+            
+            // Always add label, but empty for single nodes
+            const label = document.createElement('div');
+            label.className = 'ribbon-group-label';
+            label.textContent = Array.isArray(nodes) ? category.charAt(0).toUpperCase() + category.slice(1) : '';
+            group.appendChild(label);
+
             // Create a button for each node type
-            nodes.forEach(node => {
+            nodeArray.forEach(node => {
                 if (!node.name) {
                     return;
                 }
@@ -49,7 +50,6 @@ async function initializeRibbon() {
                 content.appendChild(button);
             });
 
-            group.appendChild(label);
             group.appendChild(content);
             ribbon.appendChild(group);
         }

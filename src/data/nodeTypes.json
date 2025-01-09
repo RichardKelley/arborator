@@ -1,4 +1,9 @@
 {
+    "root": {
+        "name": "Root",
+        "type": "root"
+    },
+
     "actions" : [
         {
             "name": "GenerateAction",
@@ -31,5 +36,4 @@
             "type": "control"
         }
     ]
-    
 }

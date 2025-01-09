@@ -80,6 +80,9 @@ class CanvasManager {
 
     private drawNode(node: CanvasNode) {
         const radius = 10;
+        const connectionPointRadius = 5; // Radius of the connection point circle
+        
+        // Draw main node rectangle with rounded corners
         this.ctx.beginPath();
         this.ctx.moveTo(node.x + radius, node.y);
         this.ctx.lineTo(node.x + node.width - radius, node.y);
@@ -97,6 +100,15 @@ class CanvasManager {
         this.ctx.fill();
         
         // Stroke - red if selected, default color otherwise
+        this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+
+        // Draw connection point circle at the top center
+        this.ctx.beginPath();
+        this.ctx.arc(node.x + node.width / 2, node.y, connectionPointRadius, 0, Math.PI * 2);
+        this.ctx.fillStyle = node === this.selectedNode ? '#ffcccc' : '#e0e0e0';
+        this.ctx.fill();
         this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
