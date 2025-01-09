@@ -34,6 +34,7 @@ class CanvasManager {
     private static readonly MIN_NODE_WIDTH = 150;
     private static readonly TEXT_PADDING = 20; // Padding on each side of the text
     private static readonly CONNECTION_POINT_RADIUS = 5;
+    private static readonly CONNECTION_CLICK_THRESHOLD = 15; // Increased threshold for easier edge selection
 
     constructor() {
         this.canvas = document.getElementById('tree-canvas') as HTMLCanvasElement;
@@ -44,6 +45,9 @@ class CanvasManager {
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        
+        // Add keyboard event listener for deleting connections
+        window.addEventListener('keydown', this.handleKeyDown.bind(this));
         
         // Handle canvas resize
         window.addEventListener('resize', this.handleResize.bind(this));
@@ -330,7 +334,7 @@ class CanvasManager {
         
         // Check multiple points along the curve
         const steps = 20;
-        const threshold = 5; // Distance threshold in pixels
+        const threshold = CanvasManager.CONNECTION_CLICK_THRESHOLD; // Use the new constant
         
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
@@ -367,6 +371,23 @@ class CanvasManager {
             }
         }
         return null;
+    }
+
+    private handleKeyDown(e: KeyboardEvent) {
+        if (e.key === 'x' && this.selectedConnection) {
+            this.deleteSelectedConnection();
+        }
+    }
+
+    private deleteSelectedConnection() {
+        if (this.selectedConnection) {
+            const index = this.connections.indexOf(this.selectedConnection);
+            if (index > -1) {
+                this.connections.splice(index, 1);
+                this.selectedConnection = null;
+                this.draw();
+            }
+        }
     }
 }
 
