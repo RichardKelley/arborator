@@ -51,36 +51,69 @@ body {
   background-color: white;
 }
 
-.ribbon {
-  background-color: #f0f0f0;
-  padding: 4px 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.ribbon-container {
   display: flex;
-  gap: 0;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ribbon-tabs {
+  display: flex;
+  padding: 0 16px;
+  border-bottom: 1px solid #ccc;
+  background-color: #e8e8e8;
+}
+
+.ribbon-tab {
+  padding: 4px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  font-size: 12px;
+}
+
+.ribbon-tab:hover {
+  background-color: #f0f0f0;
+}
+
+.ribbon-tab.active {
+  background-color: #f0f0f0;
+  border-bottom: 2px solid #007acc;
+  margin-bottom: -1px;
+}
+
+.ribbon {
+  padding: 4px 16px;
+  display: flex;
+  gap: 16px;
   align-items: center;
   flex-shrink: 0;
-  height: 52px;
+  min-height: 52px;
+}
+
+.ribbon-content {
+  display: flex;
+  gap: 16px;
+  align-items: center;
 }
 
 .ribbon-group {
   display: flex;
   flex-direction: column;
-  height: 100%;
   position: relative;
-  justify-content: center;
-}
-
-.ribbon-group:not(:last-child) {
-  margin-right: 16px;
+  padding: 0 8px;
+  justify-content: flex-end;
+  height: 100%;
 }
 
 .ribbon-group:not(:last-child)::after {
   content: '';
   position: absolute;
   right: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 80%;
+  top: 0;
+  height: 100%;
   width: 1px;
   background-color: #ccc;
 }
@@ -89,31 +122,36 @@ body {
   font-size: 11px;
   color: #666;
   text-align: center;
-  padding: 0 8px;
-  margin-bottom: 2px;
-  min-height: 11px; /* Ensure consistent height even when empty */
+  padding: 2px 0;
+  order: -1;
 }
 
 .ribbon-group-content {
   display: flex;
+  gap: 4px;
   align-items: center;
 }
 
 .ribbon-button {
-  padding: 6px 16px;
+  padding: 4px 12px;
   border: 1px solid #ccc;
-  background-color: transparent;
+  background-color: white;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  height: 28px;
-  margin: 0 2px;
+  border-radius: 3px;
+  transition: all 0.2s;
+  height: 24px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .ribbon-button:hover {
-  background-color: #e0e0e0;
+  background-color: #f5f5f5;
+  border-color: #999;
 }
 
 .ribbon-button:active {
-  background-color: #d0d0d0;
+  background-color: #e0e0e0;
+  border-color: #666;
 } 
