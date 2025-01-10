@@ -20,6 +20,7 @@ class CanvasManager {
     private nodes: CanvasNode[] = [];
     private connections: Connection[] = [];
     private isDragging = false;
+    private isPanning = false;
     private isDrawingConnection = false;
     private connectionStartNode: CanvasNode | null = null;
     private currentMousePos = { x: 0, y: 0 };
@@ -28,13 +29,20 @@ class CanvasManager {
     private selectedConnection: Connection | null = null;
     private dragOffset = { x: 0, y: 0 };
     private dpr: number;
+    private transform = {
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0
+    };
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 50;
     private static readonly MIN_NODE_WIDTH = 150;
-    private static readonly TEXT_PADDING = 20; // Padding on each side of the text
+    private static readonly TEXT_PADDING = 20;
     private static readonly CONNECTION_POINT_RADIUS = 5;
-    private static readonly CONNECTION_CLICK_THRESHOLD = 15; // Increased threshold for easier edge selection
+    private static readonly CONNECTION_CLICK_THRESHOLD = 15;
+    private static readonly MIN_SCALE = 0.1;
+    private static readonly MAX_SCALE = 3;
 
     constructor() {
         this.canvas = document.getElementById('tree-canvas') as HTMLCanvasElement;
@@ -45,6 +53,7 @@ class CanvasManager {
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
         
         // Add keyboard event listener for deleting connections
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -95,8 +104,15 @@ class CanvasManager {
         this.ctx.resetTransform();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Set up scaling for high DPI
-        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        // Set up scaling for high DPI and apply transform
+        this.ctx.setTransform(
+            this.dpr * this.transform.scale, 
+            0, 
+            0, 
+            this.dpr * this.transform.scale, 
+            this.dpr * this.transform.offsetX, 
+            this.dpr * this.transform.offsetY
+        );
         
         // Draw all connections first (so they appear behind nodes)
         this.drawConnections();
@@ -189,10 +205,44 @@ class CanvasManager {
         return distance <= CanvasManager.CONNECTION_POINT_RADIUS;
     }
 
+    private screenToCanvas(x: number, y: number): { x: number, y: number } {
+        return {
+            x: (x / this.transform.scale) - (this.transform.offsetX / this.transform.scale),
+            y: (y / this.transform.scale) - (this.transform.offsetY / this.transform.scale)
+        };
+    }
+
+    private handleWheel(e: WheelEvent) {
+        e.preventDefault();
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Calculate zoom
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.min(
+            Math.max(
+                this.transform.scale * zoomFactor,
+                CanvasManager.MIN_SCALE
+            ),
+            CanvasManager.MAX_SCALE
+        );
+
+        // Calculate new offset to zoom towards mouse position
+        const scale = newScale / this.transform.scale;
+        this.transform.offsetX = mouseX - (mouseX - this.transform.offsetX) * scale;
+        this.transform.offsetY = mouseY - (mouseY - this.transform.offsetY) * scale;
+        this.transform.scale = newScale;
+
+        this.draw();
+    }
+
     private handleMouseDown(e: MouseEvent) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left);
-        const y = (e.clientY - rect.top);
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const { x, y } = this.screenToCanvas(screenX, screenY);
 
         // Check if we're clicking on any node's connection points
         for (const node of this.nodes) {
@@ -237,7 +287,10 @@ class CanvasManager {
             this.dragOffset.x = x - node.x;
             this.dragOffset.y = y - node.y;
         } else {
-            // Clear selection when clicking on empty space
+            // Start panning if clicking on empty space
+            this.isPanning = true;
+            this.dragOffset.x = screenX - this.transform.offsetX;
+            this.dragOffset.y = screenY - this.transform.offsetY;
             this.selectedNode = null;
             this.selectedConnection = null;
         }
@@ -247,8 +300,16 @@ class CanvasManager {
 
     private handleMouseMove(e: MouseEvent) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left);
-        const y = (e.clientY - rect.top);
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const { x, y } = this.screenToCanvas(screenX, screenY);
+
+        if (this.isPanning) {
+            this.transform.offsetX = screenX - this.dragOffset.x;
+            this.transform.offsetY = screenY - this.dragOffset.y;
+            this.draw();
+            return;
+        }
 
         if (this.isDrawingConnection) {
             this.currentMousePos = { x, y };
@@ -266,8 +327,9 @@ class CanvasManager {
     private handleMouseUp(e: MouseEvent) {
         if (this.isDrawingConnection && this.connectionStartNode) {
             const rect = this.canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left);
-            const y = (e.clientY - rect.top);
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const { x, y } = this.screenToCanvas(screenX, screenY);
 
             // Check if we're over any node's top connection point
             for (const node of this.nodes) {
@@ -284,6 +346,7 @@ class CanvasManager {
         }
 
         this.isDragging = false;
+        this.isPanning = false;
         this.isDrawingConnection = false;
         this.connectionStartNode = null;
         this.draggedNode = null;
