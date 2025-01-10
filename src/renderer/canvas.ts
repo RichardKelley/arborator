@@ -37,6 +37,7 @@ class CanvasManager {
         offsetX: 0,
         offsetY: 0
     };
+    private skipDeleteConfirmation = false;
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 50;
@@ -523,8 +524,103 @@ class CanvasManager {
     }
 
     private handleKeyDown(e: KeyboardEvent) {
-        if (e.key === 'x' && this.selectedConnection) {
-            this.deleteSelectedConnection();
+        if (e.key === 'x') {
+            if (this.selectedConnection) {
+                this.deleteSelectedConnection();
+            } else if (this.selectedNode) {
+                if (this.skipDeleteConfirmation) {
+                    this.deleteSelectedNode();
+                } else {
+                    this.showDeleteConfirmationModal();
+                }
+            }
+        }
+    }
+
+    private showDeleteConfirmationModal() {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+
+        // Create modal title
+        const title = document.createElement('div');
+        title.className = 'modal-title';
+        title.textContent = 'Delete Node';
+
+        // Create modal content
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.textContent = 'Are you sure you want to delete this node?';
+
+        // Create checkbox for "don't ask again"
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.className = 'modal-checkbox';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'dont-ask-again';
+        
+        const label = document.createElement('label');
+        label.htmlFor = 'dont-ask-again';
+        label.textContent = "Don't ask again";
+        
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+
+        // Create action buttons
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'modal-button modal-button-secondary';
+        cancelButton.textContent = 'No';
+        cancelButton.onclick = () => {
+            document.body.removeChild(overlay);
+        };
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'modal-button modal-button-primary';
+        deleteButton.textContent = 'Yes';
+        deleteButton.onclick = () => {
+            if (checkbox.checked) {
+                this.skipDeleteConfirmation = true;
+            }
+            this.deleteSelectedNode();
+            document.body.removeChild(overlay);
+        };
+
+        // Assemble modal
+        actions.appendChild(cancelButton);
+        actions.appendChild(deleteButton);
+
+        modal.appendChild(title);
+        modal.appendChild(content);
+        modal.appendChild(checkboxContainer);
+        modal.appendChild(actions);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+    }
+
+    private deleteSelectedNode() {
+        if (this.selectedNode) {
+            // Remove all connections associated with this node
+            this.connections = this.connections.filter(conn => 
+                conn.fromNode !== this.selectedNode && conn.toNode !== this.selectedNode
+            );
+
+            // Remove the node
+            const index = this.nodes.indexOf(this.selectedNode);
+            if (index > -1) {
+                this.nodes.splice(index, 1);
+                this.selectedNode = null;
+                (window as any).rightColumn.clear();
+                this.draw();
+            }
         }
     }
 
