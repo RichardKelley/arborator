@@ -127,11 +127,11 @@ async function initializeRibbon() {
         const tabs = document.createElement('div');
         tabs.className = 'ribbon-tabs';
         
-        const tabNames: TabType[] = ['nodes', 'file', 'blackboard'];
+        const tabNames: TabType[] = ['file', 'nodes', 'blackboard'];
         tabNames.forEach(tabName => {
             const tab = document.createElement('div');
             tab.className = 'ribbon-tab';
-            tab.textContent = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+            tab.textContent = tabName;
             tab.dataset.tab = tabName;
             tab.onclick = () => switchTab(tabName, nodeTypes);
             tabs.appendChild(tab);
