@@ -6,20 +6,33 @@ declare global {
     interface Window {
         electronAPI: {
             getNodeTypes: () => Promise<any>;
+            getConfigs: () => Promise<any>;
         }
     }
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
-    getNodeTypes: async () => {
-        try {
-            const nodeTypesPath = path.join(__dirname, 'data', 'nodeTypes.json');
-            const data = await fs.promises.readFile(nodeTypesPath, 'utf8');
-            return JSON.parse(data);
-        } catch (error) {
-            console.error('Error reading nodeTypes.json:', error);
-            throw error;
-        }
+    getNodeTypes: () => {
+        return new Promise((resolve, reject) => {
+            fs.readFile(path.join(__dirname, 'data', 'nodeTypes.json'), 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(JSON.parse(data));
+            });
+        });
+    },
+    getConfigs: () => {
+        return new Promise((resolve, reject) => {
+            fs.readFile(path.join(__dirname, 'data', 'configs.json'), 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(JSON.parse(data));
+            });
+        });
     }
 });
 

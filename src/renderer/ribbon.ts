@@ -47,7 +47,13 @@ async function initializeRibbon() {
                 button.className = 'ribbon-button';
                 button.textContent = node.name;
                 button.dataset.type = node.type;
-                button.onclick = () => (window as any).canvasManager.addNode(node.type, node.name, node.has_children);
+                button.onclick = () => {
+                    const canvasManager = (window as any).canvasManager;
+                    if (canvasManager) {
+                        canvasManager.addNode(node.type, node.name, node.has_children)
+                            .catch((error: Error) => console.error('Failed to add node:', error));
+                    }
+                };
                 content.appendChild(button);
             });
 

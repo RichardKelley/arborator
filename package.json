@@ -18,7 +18,7 @@
     "build": "tsc && yarn copy-files",
     "watch": "tsc -w",
     "dev": "nodemon --exec electron/main.js",
-    "copy-files": "copyfiles -u 1 \"src/renderer/*.{html,css,js}\" dist/ && mkdir -p dist/data && cp src/data/nodeTypes.json dist/data/",
+    "copy-files": "copyfiles -u 1 \"src/renderer/*.{html,css,js}\" dist/ && mkdir -p dist/data && cp src/data/*.json dist/data/",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },

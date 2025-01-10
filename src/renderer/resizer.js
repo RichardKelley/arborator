@@ -6,30 +6,39 @@ document.addEventListener('DOMContentLoaded', () => {
   let startWidth;
 
   resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
     isResizing = true;
     startX = e.clientX;
-    startWidth = rightColumn.offsetWidth;
+    startWidth = parseInt(getComputedStyle(rightColumn).width, 10);
     resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
   });
 
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     
-    const width = startWidth - (e.clientX - startX);
+    const dx = startX - e.clientX;
+    const newWidth = startWidth + dx;
+    
     // Set minimum and maximum widths
     const minWidth = 100; // minimum width in pixels
     const maxWidth = window.innerWidth * 0.8; // maximum 80% of window width
     
-    if (width >= minWidth && width <= maxWidth) {
-      rightColumn.style.width = `${width}px`;
+    if (newWidth >= minWidth && newWidth <= maxWidth) {
+      rightColumn.style.width = `${newWidth}px`;
       // Dispatch a custom event when column is resized
       window.dispatchEvent(new CustomEvent('column-resize'));
     }
   });
 
   document.addEventListener('mouseup', () => {
+    if (!isResizing) return;
+    
     isResizing = false;
     resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
     // Dispatch final resize event
     window.dispatchEvent(new CustomEvent('column-resize'));
   });

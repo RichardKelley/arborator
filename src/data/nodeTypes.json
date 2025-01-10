@@ -2,24 +2,28 @@
     "root": {
         "name": "Root",
         "type": "root",
-        "has_children": true
+        "has_children": true,
+        "configs": []
     },
 
     "actions" : [
         {
             "name": "GenerateAction",
             "type": "action",
-            "has_children": false
+            "has_children": false,
+            "configs" : ["HFLMConfig", "LMActionConfig"]
         },
         {
             "name": "LogLikelihoodAction",
             "type": "action",
-            "has_children": false
+            "has_children": false,
+            "configs" : ["HFLMConfig", "LMActionConfig"]
         },
         {
             "name": "LogLikelihoodRollingAction",
             "type": "action",
-            "has_children": false
+            "has_children": false,
+            "configs" : ["HFLMConfig", "LMActionConfig"]
         }
     ],
 
@@ -27,7 +31,8 @@
         {
             "name": "LMCompletionCondition",
             "type": "condition",
-            "has_children": false
+            "has_children": false,
+            "configs" : ["HFLMConfig", "LMCompletionConfig"]
         }
     ],
 
@@ -35,12 +40,14 @@
         {
             "name": "Fallback",
             "type": "control",
-            "has_children": true
+            "has_children": true,
+            "configs": []
         },
         {
             "name": "Sequence",
             "type": "control",
-            "has_children": true
+            "has_children": true,
+            "configs": []
         }
     ]
 }

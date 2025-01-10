@@ -2,11 +2,14 @@ interface CanvasNode {
     id: string;
     type: string;
     name: string;
+    customName?: string;
     x: number;
     y: number;
     width: number;
     height: number;
     has_children: boolean;
+    configs?: string[];
+    configValues?: { [key: string]: { [key: string]: any } };
 }
 
 interface Connection {
@@ -83,20 +86,97 @@ class CanvasManager {
         return Math.max(CanvasManager.MIN_NODE_WIDTH, textWidth + (CanvasManager.TEXT_PADDING * 2));
     }
 
-    addNode(type: string, name: string, has_children: boolean) {
-        const nodeWidth = this.calculateNodeWidth(name);
-        const node: CanvasNode = {
-            id: Math.random().toString(36).substr(2, 9),
-            type,
-            name,
-            x: (this.canvas.width / 2 / this.dpr) - nodeWidth / 2,
-            y: (this.canvas.height / 2 / this.dpr) - CanvasManager.NODE_HEIGHT / 2,
-            width: nodeWidth,
-            height: CanvasManager.NODE_HEIGHT,
-            has_children
-        };
-        this.nodes.push(node);
-        this.draw();
+    async addNode(type: string, name: string, has_children: boolean) {
+        try {
+            // Get the node type configuration
+            const nodeTypes = await window.electronAPI.getNodeTypes();
+            let configs: string[] = [];
+
+            // Find the matching node type to get its configs
+            if (type === 'root') {
+                configs = nodeTypes.root.configs || [];
+            } else {
+                // Look in the appropriate category (actions, conditions, controls)
+                const categoryKey = Object.keys(nodeTypes).find(key => {
+                    if (Array.isArray(nodeTypes[key])) {
+                        return nodeTypes[key].some((node: any) => node.name === name);
+                    }
+                    return false;
+                });
+
+                if (categoryKey) {
+                    const nodeConfig = (nodeTypes[categoryKey] as any[]).find(node => node.name === name);
+                    if (nodeConfig) {
+                        configs = nodeConfig.configs || [];
+                    }
+                }
+            }
+
+            const nodeWidth = this.calculateNodeWidth(name);
+            const node: CanvasNode = {
+                id: Math.random().toString(36).substr(2, 9),
+                type,
+                name,
+                x: (this.canvas.width / 2 / this.dpr) - nodeWidth / 2,
+                y: (this.canvas.height / 2 / this.dpr) - CanvasManager.NODE_HEIGHT / 2,
+                width: nodeWidth,
+                height: CanvasManager.NODE_HEIGHT,
+                has_children,
+                configs,
+                configValues: {}
+            };
+
+            // Initialize empty config values
+            if (configs.length > 0) {
+                const configsData = await window.electronAPI.getConfigs();
+                configs.forEach(configName => {
+                    if (configsData[configName]) {
+                        node.configValues![configName] = {};
+                        // Initialize each field with a default value based on its type
+                        Object.entries(configsData[configName]).forEach(([key, type]) => {
+                            node.configValues![configName][key] = this.getDefaultValueForType(type as string);
+                        });
+                    }
+                });
+            }
+
+            this.nodes.push(node);
+            this.draw();
+        } catch (error) {
+            console.error('Failed to add node:', error);
+        }
+    }
+
+    private getDefaultValueForType(type: string): any {
+        switch (type) {
+            case 'int':
+                return 0;
+            case 'float':
+                return 0.0;
+            case 'bool':
+                return false;
+            case 'str':
+                return '';
+            default:
+                return null;
+        }
+    }
+
+    updateNodeConfigValue(nodeId: string, configName: string, key: string, value: any) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node && node.configValues) {
+            if (!node.configValues[configName]) {
+                node.configValues[configName] = {};
+            }
+            node.configValues[configName][key] = value;
+            // Trigger a redraw to ensure any visual updates are applied
+            this.draw();
+        }
+    }
+
+    getNodeConfigValues(nodeId: string): { [key: string]: { [key: string]: any } } | undefined {
+        const node = this.nodes.find(n => n.id === nodeId);
+        return node?.configValues;
     }
 
     private draw() {
@@ -135,7 +215,7 @@ class CanvasManager {
 
     private drawNode(node: CanvasNode) {
         const radius = 10;
-        const connectionPointRadius = 5; // Radius of the connection point circle
+        const connectionPointRadius = 5;
         
         // Draw main node rectangle with rounded corners
         this.ctx.beginPath();
@@ -179,7 +259,7 @@ class CanvasManager {
             this.ctx.stroke();
         }
 
-        // Text
+        // Text - always display the type
         this.ctx.fillStyle = '#000';
         this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'center';
@@ -253,6 +333,7 @@ class CanvasManager {
                 this.currentMousePos = { x, y };
                 this.selectedNode = null;
                 this.selectedConnection = null;
+                (window as any).rightColumn.clear();
                 return;
             }
             
@@ -263,6 +344,7 @@ class CanvasManager {
                 this.currentMousePos = { x, y };
                 this.selectedNode = null;
                 this.selectedConnection = null;
+                (window as any).rightColumn.clear();
                 return;
             }
         }
@@ -272,6 +354,7 @@ class CanvasManager {
         if (connection) {
             this.selectedConnection = connection;
             this.selectedNode = null;
+            (window as any).rightColumn.clear();
             this.draw();
             return;
         }
@@ -286,6 +369,8 @@ class CanvasManager {
             this.draggedNode = node;
             this.dragOffset.x = x - node.x;
             this.dragOffset.y = y - node.y;
+            // Display node information in right column
+            (window as any).rightColumn.displayNode(node);
         } else {
             // Start panning if clicking on empty space
             this.isPanning = true;
@@ -293,6 +378,7 @@ class CanvasManager {
             this.dragOffset.y = screenY - this.transform.offsetY;
             this.selectedNode = null;
             this.selectedConnection = null;
+            (window as any).rightColumn.clear();
         }
         
         this.draw();
@@ -450,6 +536,15 @@ class CanvasManager {
                 this.selectedConnection = null;
                 this.draw();
             }
+        }
+    }
+
+    // Add method to update node custom name
+    updateNodeCustomName(nodeId: string, customName: string) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.customName = customName;
+            this.draw();
         }
     }
 }

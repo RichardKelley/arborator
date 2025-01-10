@@ -4,10 +4,16 @@ interface ElectronAPI {
         conditions: Array<{ name: string; type: string; has_children: boolean; }>;
         controls: Array<{ name: string; type: string; has_children: boolean; }>;
     }>;
+    getConfigs: () => Promise<any>;
 }
 
 declare global {
     interface Window {
-        electronAPI: ElectronAPI;
+        electronAPI: {
+            getNodeTypes: () => Promise<any>;
+            getConfigs: () => Promise<any>;
+        }
     }
-} 
+}
+
+export {}; 
