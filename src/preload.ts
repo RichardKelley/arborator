@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -7,6 +7,9 @@ declare global {
         electronAPI: {
             getNodeTypes: () => Promise<any>;
             getConfigs: () => Promise<any>;
+            saveTree: (treeData: any) => Promise<string | undefined>;
+            openTree: () => Promise<any>;
+            showSaveConfirmation: () => Promise<'save' | 'discard' | 'cancel'>;
         }
     }
 }
@@ -33,6 +36,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
                 resolve(JSON.parse(data));
             });
         });
+    },
+    saveTree: async (treeData: any) => {
+        try {
+            // Send tree data to main process and get save path from dialog
+            const filePath = await ipcRenderer.invoke('show-save-dialog');
+            if (!filePath) return undefined;
+
+            // Write the tree data to the selected file
+            await fs.promises.writeFile(
+                filePath,
+                JSON.stringify(treeData, null, 2),
+                'utf8'
+            );
+
+            return filePath;
+        } catch (error) {
+            console.error('Failed to save tree:', error);
+            throw error;
+        }
+    },
+    openTree: async () => {
+        try {
+            // Get file path from dialog
+            const filePath = await ipcRenderer.invoke('show-open-dialog');
+            if (!filePath) return undefined;
+
+            // Read and parse the file
+            const fileContent = await fs.promises.readFile(filePath, 'utf8');
+            return JSON.parse(fileContent);
+        } catch (error) {
+            console.error('Failed to open tree:', error);
+            throw error;
+        }
+    },
+    showSaveConfirmation: async () => {
+        return ipcRenderer.invoke('show-save-confirmation');
     }
 });
 

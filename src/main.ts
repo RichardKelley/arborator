@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron'
 import * as path from 'path'
 
 app.name = 'Arborator'
@@ -81,6 +81,61 @@ function createWindow() {
     mainWindow = null
   })
 }
+
+// Handle save dialog
+ipcMain.handle('show-save-dialog', async () => {
+  if (!mainWindow) return undefined;
+
+  const { filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Tree',
+    defaultPath: 'tree.json',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return filePath;
+});
+
+// Handle save confirmation dialog
+ipcMain.handle('show-save-confirmation', async () => {
+  if (!mainWindow) return 'cancel';
+
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Save', 'Don\'t Save', 'Cancel'],
+    defaultId: 0,
+    cancelId: 2,
+    title: 'Save Changes?',
+    message: 'Do you want to save the changes to your tree?',
+    detail: 'Your changes will be lost if you don\'t save them.'
+  });
+
+  // Map response to action
+  switch (response) {
+    case 0: return 'save';
+    case 1: return 'discard';
+    default: return 'cancel';
+  }
+});
+
+// Handle open dialog
+ipcMain.handle('show-open-dialog', async () => {
+  if (!mainWindow) return undefined;
+
+  const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open Tree',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    properties: ['openFile']
+  });
+
+  return filePaths[0]; // Return the first selected file
+});
 
 // Create window when app is ready
 app.whenReady().then(() => {

@@ -643,6 +643,161 @@ class CanvasManager {
             this.draw();
         }
     }
+
+    // Serialize the tree structure to JSON
+    serializeTree() {
+        // Create a simplified version of nodes with only logical information
+        const logicalNodes = this.nodes.map(node => ({
+            id: node.id,
+            type: node.type,
+            name: node.name,
+            customName: node.customName,
+            has_children: node.has_children,
+            configs: node.configs,
+            configValues: node.configValues
+        }));
+
+        // Create a simplified version of connections using node IDs
+        const logicalConnections = this.connections.map(conn => ({
+            fromNodeId: conn.fromNode.id,
+            toNodeId: conn.toNode.id
+        }));
+
+        // Create display information for nodes
+        const displayInfo = {
+            nodes: this.nodes.map(node => ({
+                id: node.id,
+                x: node.x,
+                y: node.y,
+                width: node.width,
+                height: node.height
+            })),
+            transform: this.transform
+        };
+
+        return {
+            // Logical structure of the tree
+            logical: {
+                nodes: logicalNodes,
+                connections: logicalConnections
+            },
+            // Visual/display information
+            display: displayInfo
+        };
+    }
+
+    // Save the current tree
+    async save() {
+        try {
+            const treeData = this.serializeTree();
+            await window.electronAPI.saveTree(treeData);
+        } catch (error) {
+            console.error('Failed to save tree:', error);
+            throw error;
+        }
+    }
+
+    // Load a tree from saved data
+    async loadTree(treeData: any) {
+        try {
+            // Clear existing state
+            this.nodes = [];
+            this.connections = [];
+            this.selectedNode = null;
+            this.selectedConnection = null;
+            (window as any).rightColumn.clear();
+
+            // Load nodes first
+            const nodeMap = new Map<string, CanvasNode>();
+            
+            // Create nodes with both logical and display information
+            for (const logicalNode of treeData.logical.nodes) {
+                const displayNode = treeData.display.nodes.find((n: any) => n.id === logicalNode.id);
+                if (!displayNode) continue;
+
+                const node: CanvasNode = {
+                    ...logicalNode,
+                    x: displayNode.x,
+                    y: displayNode.y,
+                    width: displayNode.width,
+                    height: displayNode.height
+                };
+                
+                this.nodes.push(node);
+                nodeMap.set(node.id, node);
+            }
+
+            // Restore connections using the node map
+            for (const conn of treeData.logical.connections) {
+                const fromNode = nodeMap.get(conn.fromNodeId);
+                const toNode = nodeMap.get(conn.toNodeId);
+                if (fromNode && toNode) {
+                    this.connections.push({
+                        fromNode,
+                        toNode
+                    });
+                }
+            }
+
+            // Restore transform
+            if (treeData.display.transform) {
+                this.transform = treeData.display.transform;
+            }
+
+            this.draw();
+        } catch (error) {
+            console.error('Failed to load tree:', error);
+            throw error;
+        }
+    }
+
+    // Open a tree from a file
+    async open() {
+        try {
+            const treeData = await window.electronAPI.openTree();
+            if (treeData) {
+                await this.loadTree(treeData);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Failed to open tree:', error);
+            throw error;
+        }
+    }
+
+    // Check if the canvas has any content
+    hasContent(): boolean {
+        return this.nodes.length > 0;
+    }
+
+    // Clear the canvas
+    clear() {
+        this.nodes = [];
+        this.connections = [];
+        this.selectedNode = null;
+        this.selectedConnection = null;
+        this.transform = {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0
+        };
+        (window as any).rightColumn.clear();
+        this.draw();
+    }
+
+    // New method to handle the new action
+    async handleNew() {
+        if (this.hasContent()) {
+            const shouldSave = await window.electronAPI.showSaveConfirmation();
+            if (shouldSave === 'save') {
+                await this.save();
+            } else if (shouldSave === 'cancel') {
+                return;
+            }
+        }
+        this.clear();
+    }
 }
 
 // Create and export the singleton instance

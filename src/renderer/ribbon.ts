@@ -22,9 +22,33 @@ function createFileButtons(content: HTMLElement) {
     groupContent.className = 'ribbon-group-content';
 
     const buttons = [
-        { name: 'New', action: () => console.log('New clicked') },
-        { name: 'Open', action: () => console.log('Open clicked') },
-        { name: 'Save', action: () => console.log('Save clicked') }
+        { name: 'New', action: async () => {
+            try {
+                await (window as any).canvasManager.handleNew();
+            } catch (error) {
+                console.error('Failed to handle new action:', error);
+            }
+        }},
+        { name: 'Open', action: async () => {
+            try {
+                const success = await (window as any).canvasManager.open();
+                if (success) {
+                    console.log('Tree loaded successfully');
+                }
+            } catch (error) {
+                console.error('Failed to open tree:', error);
+            }
+        }},
+        { name: 'Save', action: async () => {
+            try {
+                const filePath = await (window as any).canvasManager.save();
+                if (filePath) {
+                    console.log(`Tree saved successfully to ${filePath}`);
+                }
+            } catch (error) {
+                console.error('Failed to save tree:', error);
+            }
+        }}
     ];
 
     buttons.forEach(btn => {
