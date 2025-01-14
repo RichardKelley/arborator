@@ -38,6 +38,8 @@ class CanvasManager {
         offsetY: 0
     };
     private skipDeleteConfirmation = false;
+    private isRectangleSelecting = false;
+    private selectionStart = { x: 0, y: 0 };
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 50;
@@ -208,6 +210,20 @@ class CanvasManager {
             );
         }
         
+        // Draw selection rectangle if active
+        if (this.isRectangleSelecting) {
+            const left = Math.min(this.selectionStart.x, this.currentMousePos.x);
+            const right = Math.max(this.selectionStart.x, this.currentMousePos.x);
+            const top = Math.min(this.selectionStart.y, this.currentMousePos.y);
+            const bottom = Math.max(this.selectionStart.y, this.currentMousePos.y);
+
+            this.ctx.strokeStyle = '#0066cc';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.strokeRect(left, top, right - left, bottom - top);
+            this.ctx.setLineDash([]);
+        }
+        
         // Draw all nodes
         for (const node of this.nodes) {
             this.drawNode(node);
@@ -326,6 +342,17 @@ class CanvasManager {
         const { x, y } = this.screenToCanvas(screenX, screenY);
         const isMultiSelect = e.ctrlKey || e.metaKey;
 
+        // Start rectangle selection if shift is pressed
+        if (e.shiftKey) {
+            this.isRectangleSelecting = true;
+            this.selectionStart = { x, y };
+            if (!isMultiSelect) {
+                this.selectedNodes.clear();
+                this.selectedConnections.clear();
+            }
+            return;
+        }
+
         // Check if we're clicking on any node's connection points
         for (const node of this.nodes) {
             // Check top connection point
@@ -376,6 +403,11 @@ class CanvasManager {
         const node = this.getNodeAtPosition(x, y);
         
         if (node) {
+            this.isDragging = true;
+            this.draggedNode = node;
+            this.dragOffset.x = x - node.x;
+            this.dragOffset.y = y - node.y;
+
             if (isMultiSelect) {
                 // Toggle node selection
                 if (this.selectedNodes.has(node)) {
@@ -383,16 +415,13 @@ class CanvasManager {
                 } else {
                     this.selectedNodes.add(node);
                 }
-            } else {
+            } else if (!this.selectedNodes.has(node)) {
+                // If clicking an unselected node without modifier key, clear selection and select only this node
                 this.selectedNodes.clear();
                 this.selectedConnections.clear();
                 this.selectedNodes.add(node);
             }
             
-            this.isDragging = true;
-            this.draggedNode = node;
-            this.dragOffset.x = x - node.x;
-            this.dragOffset.y = y - node.y;
             // Display node information in right column
             (window as any).rightColumn.displayNode(node);
         } else {
@@ -415,6 +444,13 @@ class CanvasManager {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const { x, y } = this.screenToCanvas(screenX, screenY);
+
+        if (this.isRectangleSelecting) {
+            this.currentMousePos = { x, y };
+            this.updateRectangleSelection();
+            this.draw();
+            return;
+        }
 
         if (this.isPanning) {
             this.transform.offsetX = screenX - this.dragOffset.x;
@@ -450,6 +486,12 @@ class CanvasManager {
     }
 
     private handleMouseUp(e: MouseEvent) {
+        if (this.isRectangleSelecting) {
+            this.isRectangleSelecting = false;
+            this.draw();
+            return;
+        }
+
         if (this.isDrawingConnection && this.connectionStartNode) {
             const rect = this.canvas.getBoundingClientRect();
             const screenX = e.clientX - rect.left;
@@ -965,6 +1007,64 @@ class CanvasManager {
         } catch (error) {
             console.error('Failed to add tree:', error);
             throw error;
+        }
+    }
+
+    private updateRectangleSelection() {
+        const left = Math.min(this.selectionStart.x, this.currentMousePos.x);
+        const right = Math.max(this.selectionStart.x, this.currentMousePos.x);
+        const top = Math.min(this.selectionStart.y, this.currentMousePos.y);
+        const bottom = Math.max(this.selectionStart.y, this.currentMousePos.y);
+
+        // Check each node for intersection with selection rectangle
+        for (const node of this.nodes) {
+            const nodeRight = node.x + node.width;
+            const nodeBottom = node.y + node.height;
+
+            if (node.x <= right && nodeRight >= left && node.y <= bottom && nodeBottom >= top) {
+                this.selectedNodes.add(node);
+            }
+        }
+
+        // Check each connection for intersection with selection rectangle
+        for (const connection of this.connections) {
+            const fromX = connection.fromNode.x + connection.fromNode.width / 2;
+            const fromY = connection.fromNode.y + connection.fromNode.height;
+            const toX = connection.toNode.x + connection.toNode.width / 2;
+            const toY = connection.toNode.y;
+
+            // Simple line-box intersection check
+            if (this.lineIntersectsBox(fromX, fromY, toX, toY, left, top, right, bottom)) {
+                this.selectedConnections.add(connection);
+            }
+        }
+    }
+
+    private lineIntersectsBox(x1: number, y1: number, x2: number, y2: number, left: number, top: number, right: number, bottom: number): boolean {
+        // Cohen-Sutherland algorithm for line clipping
+        const INSIDE = 0;
+        const LEFT = 1;
+        const RIGHT = 2;
+        const BOTTOM = 4;
+        const TOP = 8;
+
+        function computeCode(x: number, y: number): number {
+            let code = INSIDE;
+            if (x < left) code |= LEFT;
+            else if (x > right) code |= RIGHT;
+            if (y < top) code |= TOP;
+            else if (y > bottom) code |= BOTTOM;
+            return code;
+        }
+
+        let code1 = computeCode(x1, y1);
+        let code2 = computeCode(x2, y2);
+
+        while (true) {
+            if (!(code1 | code2)) return true;  // Both points inside
+            if (code1 & code2) return false;    // Both points on same side
+
+            return true; // Line intersects the box
         }
     }
 }
