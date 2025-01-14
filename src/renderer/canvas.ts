@@ -28,8 +28,8 @@ class CanvasManager {
     private connectionStartNode: CanvasNode | null = null;
     private currentMousePos = { x: 0, y: 0 };
     private draggedNode: CanvasNode | null = null;
-    private selectedNode: CanvasNode | null = null;
-    private selectedConnection: Connection | null = null;
+    private selectedNodes: Set<CanvasNode> = new Set();
+    private selectedConnections: Set<Connection> = new Set();
     private dragOffset = { x: 0, y: 0 };
     private dpr: number;
     private transform = {
@@ -236,16 +236,16 @@ class CanvasManager {
         this.ctx.fill();
         
         // Stroke - red if selected, default color otherwise
-        this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
+        this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
         // Draw connection point circle at the top center
         this.ctx.beginPath();
         this.ctx.arc(node.x + node.width / 2, node.y, connectionPointRadius, 0, Math.PI * 2);
-        this.ctx.fillStyle = node === this.selectedNode ? '#ffcccc' : '#e0e0e0';
+        this.ctx.fillStyle = this.selectedNodes.has(node) ? '#ffcccc' : '#e0e0e0';
         this.ctx.fill();
-        this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
+        this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
@@ -253,9 +253,9 @@ class CanvasManager {
         if (node.has_children) {
             this.ctx.beginPath();
             this.ctx.arc(node.x + node.width / 2, node.y + node.height, connectionPointRadius, 0, Math.PI * 2);
-            this.ctx.fillStyle = node === this.selectedNode ? '#ffcccc' : '#e0e0e0';
+            this.ctx.fillStyle = this.selectedNodes.has(node) ? '#ffcccc' : '#e0e0e0';
             this.ctx.fill();
-            this.ctx.strokeStyle = node === this.selectedNode ? '#ff0000' : '#666';
+            this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
         }
@@ -324,6 +324,7 @@ class CanvasManager {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const { x, y } = this.screenToCanvas(screenX, screenY);
+        const isMultiSelect = e.ctrlKey || e.metaKey;
 
         // Check if we're clicking on any node's connection points
         for (const node of this.nodes) {
@@ -332,9 +333,10 @@ class CanvasManager {
                 this.isDrawingConnection = true;
                 this.connectionStartNode = node;
                 this.currentMousePos = { x, y };
-                this.selectedNode = null;
-                this.selectedConnection = null;
-                (window as any).rightColumn.clear();
+                if (!isMultiSelect) {
+                    this.selectedNodes.clear();
+                    this.selectedConnections.clear();
+                }
                 return;
             }
             
@@ -343,9 +345,10 @@ class CanvasManager {
                 this.isDrawingConnection = true;
                 this.connectionStartNode = node;
                 this.currentMousePos = { x, y };
-                this.selectedNode = null;
-                this.selectedConnection = null;
-                (window as any).rightColumn.clear();
+                if (!isMultiSelect) {
+                    this.selectedNodes.clear();
+                    this.selectedConnections.clear();
+                }
                 return;
             }
         }
@@ -353,19 +356,39 @@ class CanvasManager {
         // Check if clicking on a connection
         const connection = this.getConnectionAtPosition(x, y);
         if (connection) {
-            this.selectedConnection = connection;
-            this.selectedNode = null;
-            (window as any).rightColumn.clear();
+            if (isMultiSelect) {
+                // Toggle connection selection
+                if (this.selectedConnections.has(connection)) {
+                    this.selectedConnections.delete(connection);
+                } else {
+                    this.selectedConnections.add(connection);
+                }
+            } else {
+                this.selectedNodes.clear();
+                this.selectedConnections.clear();
+                this.selectedConnections.add(connection);
+            }
             this.draw();
             return;
         }
 
         // If not starting a connection or selecting an edge, handle regular node dragging
         const node = this.getNodeAtPosition(x, y);
-        this.selectedNode = node;
-        this.selectedConnection = null;
         
         if (node) {
+            if (isMultiSelect) {
+                // Toggle node selection
+                if (this.selectedNodes.has(node)) {
+                    this.selectedNodes.delete(node);
+                } else {
+                    this.selectedNodes.add(node);
+                }
+            } else {
+                this.selectedNodes.clear();
+                this.selectedConnections.clear();
+                this.selectedNodes.add(node);
+            }
+            
             this.isDragging = true;
             this.draggedNode = node;
             this.dragOffset.x = x - node.x;
@@ -377,9 +400,11 @@ class CanvasManager {
             this.isPanning = true;
             this.dragOffset.x = screenX - this.transform.offsetX;
             this.dragOffset.y = screenY - this.transform.offsetY;
-            this.selectedNode = null;
-            this.selectedConnection = null;
-            (window as any).rightColumn.clear();
+            if (!isMultiSelect) {
+                this.selectedNodes.clear();
+                this.selectedConnections.clear();
+                (window as any).rightColumn.clear();
+            }
         }
         
         this.draw();
@@ -448,8 +473,8 @@ class CanvasManager {
             const toY = connection.toNode.y;
             
             // Set line style based on selection
-            this.ctx.strokeStyle = connection === this.selectedConnection ? '#ff0000' : '#666';
-            this.ctx.lineWidth = connection === this.selectedConnection ? 3 : 2;
+            this.ctx.strokeStyle = this.selectedConnections.has(connection) ? '#ff0000' : '#666';
+            this.ctx.lineWidth = this.selectedConnections.has(connection) ? 3 : 2;
             
             this.drawConnectionLine(fromX, fromY, toX, toY);
         }
@@ -525,19 +550,22 @@ class CanvasManager {
 
     private handleKeyDown(e: KeyboardEvent) {
         if (e.key === 'x') {
-            if (this.selectedConnection) {
-                this.deleteSelectedConnection();
-            } else if (this.selectedNode) {
+            const numSelectedNodes = this.selectedNodes.size;
+            const numSelectedConnections = this.selectedConnections.size;
+            const totalSelected = numSelectedNodes + numSelectedConnections;
+
+            if (totalSelected > 0) {
                 if (this.skipDeleteConfirmation) {
-                    this.deleteSelectedNode();
+                    this.deleteSelectedNodes();
+                    this.deleteSelectedConnections();
                 } else {
-                    this.showDeleteConfirmationModal();
+                    this.showDeleteConfirmationModal(numSelectedNodes, numSelectedConnections);
                 }
             }
         }
     }
 
-    private showDeleteConfirmationModal() {
+    private showDeleteConfirmationModal(numNodes: number = 0, numConnections: number = 0) {
         // Create modal overlay
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -549,12 +577,22 @@ class CanvasManager {
         // Create modal title
         const title = document.createElement('div');
         title.className = 'modal-title';
-        title.textContent = 'Delete Node';
+        title.textContent = 'Delete Selected Objects';
 
-        // Create modal content
+        // Create modal content with dynamic text
         const content = document.createElement('div');
         content.className = 'modal-content';
-        content.textContent = 'Are you sure you want to delete this node?';
+        
+        let message = 'Are you sure you want to delete ';
+        const parts = [];
+        if (numNodes > 0) {
+            parts.push(`${numNodes} node${numNodes > 1 ? 's' : ''}`);
+        }
+        if (numConnections > 0) {
+            parts.push(`${numConnections} connection${numConnections > 1 ? 's' : ''}`);
+        }
+        message += parts.join(' and ') + '?';
+        content.textContent = message;
 
         // Create checkbox for "don't ask again"
         const checkboxContainer = document.createElement('div');
@@ -589,7 +627,8 @@ class CanvasManager {
             if (checkbox.checked) {
                 this.skipDeleteConfirmation = true;
             }
-            this.deleteSelectedNode();
+            this.deleteSelectedNodes();
+            this.deleteSelectedConnections();
             document.body.removeChild(overlay);
         };
 
@@ -606,32 +645,26 @@ class CanvasManager {
         document.body.appendChild(overlay);
     }
 
-    private deleteSelectedNode() {
-        if (this.selectedNode) {
-            // Remove all connections associated with this node
+    private deleteSelectedNodes() {
+        if (this.selectedNodes.size > 0) {
+            // Remove all connections associated with selected nodes
             this.connections = this.connections.filter(conn => 
-                conn.fromNode !== this.selectedNode && conn.toNode !== this.selectedNode
+                !this.selectedNodes.has(conn.fromNode) && !this.selectedNodes.has(conn.toNode)
             );
 
-            // Remove the node
-            const index = this.nodes.indexOf(this.selectedNode);
-            if (index > -1) {
-                this.nodes.splice(index, 1);
-                this.selectedNode = null;
-                (window as any).rightColumn.clear();
-                this.draw();
-            }
+            // Remove the nodes
+            this.nodes = this.nodes.filter(node => !this.selectedNodes.has(node));
+            this.selectedNodes.clear();
+            (window as any).rightColumn.clear();
+            this.draw();
         }
     }
 
-    private deleteSelectedConnection() {
-        if (this.selectedConnection) {
-            const index = this.connections.indexOf(this.selectedConnection);
-            if (index > -1) {
-                this.connections.splice(index, 1);
-                this.selectedConnection = null;
-                this.draw();
-            }
+    private deleteSelectedConnections() {
+        if (this.selectedConnections.size > 0) {
+            this.connections = this.connections.filter(conn => !this.selectedConnections.has(conn));
+            this.selectedConnections.clear();
+            this.draw();
         }
     }
 
@@ -703,8 +736,8 @@ class CanvasManager {
             // Clear existing state
             this.nodes = [];
             this.connections = [];
-            this.selectedNode = null;
-            this.selectedConnection = null;
+            this.selectedNodes.clear();
+            this.selectedConnections.clear();
             (window as any).rightColumn.clear();
 
             // Load nodes first
@@ -775,8 +808,8 @@ class CanvasManager {
     clear() {
         this.nodes = [];
         this.connections = [];
-        this.selectedNode = null;
-        this.selectedConnection = null;
+        this.selectedNodes.clear();
+        this.selectedConnections.clear();
         this.transform = {
             scale: 1,
             offsetX: 0,
