@@ -430,8 +430,21 @@ class CanvasManager {
         }
 
         if (this.isDragging && this.draggedNode) {
-            this.draggedNode.x = x - this.dragOffset.x;
-            this.draggedNode.y = y - this.dragOffset.y;
+            // Calculate the movement delta
+            const dx = x - this.dragOffset.x - this.draggedNode.x;
+            const dy = y - this.dragOffset.y - this.draggedNode.y;
+
+            // If the dragged node is selected, move all selected nodes
+            if (this.selectedNodes.has(this.draggedNode)) {
+                this.selectedNodes.forEach(node => {
+                    node.x += dx;
+                    node.y += dy;
+                });
+            } else {
+                // If dragging an unselected node, just move that node
+                this.draggedNode.x = x - this.dragOffset.x;
+                this.draggedNode.y = y - this.dragOffset.y;
+            }
             this.draw();
         }
     }
