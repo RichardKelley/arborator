@@ -798,6 +798,129 @@ class CanvasManager {
         }
         this.clear();
     }
+
+    // Find a suitable position for a new tree to avoid overlaps
+    private findSuitablePosition(nodes: CanvasNode[]): { offsetX: number, offsetY: number } {
+        if (this.nodes.length === 0) return { offsetX: 0, offsetY: 0 };
+
+        // Calculate bounding box of existing nodes
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const node of this.nodes) {
+            minX = Math.min(minX, node.x);
+            maxX = Math.max(maxX, node.x + node.width);
+            minY = Math.min(minY, node.y);
+            maxY = Math.max(maxY, node.y + node.height);
+        }
+
+        // Calculate bounding box of new nodes
+        let newMinX = Infinity, newMaxX = -Infinity, newMinY = Infinity, newMaxY = -Infinity;
+        for (const node of nodes) {
+            newMinX = Math.min(newMinX, node.x);
+            newMaxX = Math.max(newMaxX, node.x + node.width);
+            newMinY = Math.min(newMinY, node.y);
+            newMaxY = Math.max(newMaxY, node.y + node.height);
+        }
+
+        // Calculate dimensions of both bounding boxes
+        const existingWidth = maxX - minX;
+        const existingHeight = maxY - minY;
+        const newWidth = newMaxX - newMinX;
+        const newHeight = newMaxY - newMinY;
+
+        // Position the new tree to the right of existing nodes with padding
+        const padding = 50; // Reduced padding since we're ensuring no overlap
+        
+        // Calculate offset to place new tree's left edge at existing tree's right edge + padding
+        const offsetX = maxX - newMinX + padding;
+        
+        // Center the new tree vertically relative to existing tree
+        // but ensure it doesn't overlap by checking height extents
+        let offsetY = (maxY + minY) / 2 - (newMaxY + newMinY) / 2;
+        
+        // Check if vertical centering would cause overlap
+        const newTopEdge = newMinY + offsetY;
+        const newBottomEdge = newMaxY + offsetY;
+        
+        // If there would be vertical overlap, place the new tree below with padding
+        if (newTopEdge <= maxY && newBottomEdge >= minY) {
+            offsetY = maxY - newMinY + padding;
+        }
+
+        return { offsetX, offsetY };
+    }
+
+    // Add a tree to the existing canvas
+    async addTree(treeData: any) {
+        try {
+            // Create temporary nodes to calculate positioning
+            const tempNodes: CanvasNode[] = [];
+            const nodeMap = new Map<string, CanvasNode>();
+            
+            // Create nodes with both logical and display information
+            for (const logicalNode of treeData.logical.nodes) {
+                const displayNode = treeData.display.nodes.find((n: any) => n.id === logicalNode.id);
+                if (!displayNode) continue;
+
+                const node: CanvasNode = {
+                    ...logicalNode,
+                    // Generate new ID to avoid conflicts
+                    id: Math.random().toString(36).substr(2, 9),
+                    x: displayNode.x,
+                    y: displayNode.y,
+                    width: displayNode.width,
+                    height: displayNode.height
+                };
+                
+                tempNodes.push(node);
+                nodeMap.set(logicalNode.id, node); // Map old ID to new node
+            }
+
+            // Find suitable position for the new tree
+            const { offsetX, offsetY } = this.findSuitablePosition(tempNodes);
+
+            // Apply offset to all nodes
+            tempNodes.forEach(node => {
+                node.x += offsetX;
+                node.y += offsetY;
+            });
+
+            // Add nodes to canvas
+            this.nodes.push(...tempNodes);
+
+            // Add connections using the new nodes
+            for (const conn of treeData.logical.connections) {
+                const fromNode = nodeMap.get(conn.fromNodeId);
+                const toNode = nodeMap.get(conn.toNodeId);
+                if (fromNode && toNode) {
+                    this.connections.push({
+                        fromNode,
+                        toNode
+                    });
+                }
+            }
+
+            this.draw();
+            return true;
+        } catch (error) {
+            console.error('Failed to add tree:', error);
+            throw error;
+        }
+    }
+
+    // Add a tree from a file
+    async addTreeFromFile() {
+        try {
+            const treeData = await window.electronAPI.openTree();
+            if (treeData) {
+                await this.addTree(treeData);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Failed to add tree:', error);
+            throw error;
+        }
+    }
 }
 
 // Create and export the singleton instance

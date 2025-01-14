@@ -39,6 +39,16 @@ function createFileButtons(content: HTMLElement) {
                 console.error('Failed to open tree:', error);
             }
         }},
+        { name: 'Add Tree', action: async () => {
+            try {
+                const success = await (window as any).canvasManager.addTreeFromFile();
+                if (success) {
+                    console.log('Tree added successfully');
+                }
+            } catch (error) {
+                console.error('Failed to add tree:', error);
+            }
+        }},
         { name: 'Save', action: async () => {
             try {
                 const filePath = await (window as any).canvasManager.save();
