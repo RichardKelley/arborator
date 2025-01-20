@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newWidth = startWidth + dx;
     
     // Set minimum and maximum widths
-    const minWidth = 100; // minimum width in pixels
+    const minWidth = 300; // increased from 100 to accommodate form fields (140px) + padding + labels
     const maxWidth = window.innerWidth * 0.8; // maximum 80% of window width
     
     if (newWidth >= minWidth && newWidth <= maxWidth) {
