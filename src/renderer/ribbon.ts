@@ -118,6 +118,50 @@ function createNodeButtons(content: HTMLElement, nodeTypes: NodeTypes) {
     }
 }
 
+function createCustomButtons(content: HTMLElement) {
+    const group = document.createElement('div');
+    group.className = 'ribbon-group';
+
+    const label = document.createElement('div');
+    label.className = 'ribbon-group-label';
+    label.textContent = 'Custom';
+    
+    const groupContent = document.createElement('div');
+    groupContent.className = 'ribbon-group-content';
+
+    // Create CustomAction button
+    const actionButton = document.createElement('button');
+    actionButton.className = 'ribbon-button';
+    actionButton.textContent = 'CustomAction';
+    actionButton.dataset.type = 'action';
+    actionButton.onclick = () => {
+        const canvasManager = (window as any).canvasManager;
+        if (canvasManager) {
+            canvasManager.addNode('action', 'CustomAction', false)
+                .catch((error: Error) => console.error('Failed to add CustomAction node:', error));
+        }
+    };
+    
+    // Create CustomCondition button
+    const conditionButton = document.createElement('button');
+    conditionButton.className = 'ribbon-button';
+    conditionButton.textContent = 'CustomCondition';
+    conditionButton.dataset.type = 'condition';
+    conditionButton.onclick = () => {
+        const canvasManager = (window as any).canvasManager;
+        if (canvasManager) {
+            canvasManager.addNode('condition', 'CustomCondition', false)
+                .catch((error: Error) => console.error('Failed to add CustomCondition node:', error));
+        }
+    };
+    
+    groupContent.appendChild(actionButton);
+    groupContent.appendChild(conditionButton);
+    group.appendChild(label);
+    group.appendChild(groupContent);
+    content.appendChild(group);
+}
+
 function switchTab(tab: TabType, nodeTypes: NodeTypes) {
     const ribbon = document.querySelector('.ribbon');
     if (!ribbon) return;

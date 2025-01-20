@@ -24,6 +24,12 @@
             "type": "action",
             "has_children": false,
             "configs" : ["HFLMConfig", "LMActionConfig"]
+        },
+        {
+            "name": "CustomAction",
+            "type": "action",
+            "has_children": false,
+            "configs": []
         }
     ],
 
@@ -33,6 +39,12 @@
             "type": "condition",
             "has_children": false,
             "configs" : ["HFLMConfig", "LMCompletionConfig"]
+        },
+        {
+            "name": "CustomCondition",
+            "type": "condition",
+            "has_children": false,
+            "configs": []
         }
     ],
 
@@ -46,6 +58,57 @@
         {
             "name": "Sequence",
             "type": "control",
+            "has_children": true,
+            "configs": []
+        }
+    ],
+
+    "decorators": [
+        {
+            "name": "Inverter",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "Repeat",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "Retry",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "RunOnce",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "Timeout",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "History",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "ForceFailure",
+            "type": "decorator",
+            "has_children": true,
+            "configs": []
+        },
+        {
+            "name": "ForceSuccess",
+            "type": "decorator",
             "has_children": true,
             "configs": []
         }
