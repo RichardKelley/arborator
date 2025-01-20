@@ -66,6 +66,21 @@ function createFileButtons(content: HTMLElement) {
         button.className = 'ribbon-button';
         button.textContent = btn.name;
         button.onclick = btn.action;
+        // Add tooltips for file operations
+        switch (btn.name) {
+            case 'New':
+                button.title = 'Clear canvas and create a new behavior tree';
+                break;
+            case 'Open':
+                button.title = 'Clear canvas and open an existing behavior tree';
+                break;
+            case 'Add Tree':
+                button.title = 'Add a behavior tree from a file to the current canvas';
+                break;
+            case 'Save':
+                button.title = 'Save the current canvas to a file';
+                break;
+        }
         groupContent.appendChild(button);
     });
 
@@ -102,6 +117,67 @@ function createNodeButtons(content: HTMLElement, nodeTypes: NodeTypes) {
             button.className = 'ribbon-button';
             button.textContent = node.name === 'CustomAction' || node.name === 'CustomCondition' ? 'Custom' : node.name;
             button.dataset.type = node.type;
+            
+            // Add tooltips based on node type
+            switch (node.type) {
+                case 'root':
+                    button.title = 'Root node - The starting point of the behavior tree';
+                    break;
+                case 'action':
+                    if (node.name === 'CustomAction') {
+                        button.title = 'Create a custom action node';
+                    } else if (node.name === 'GenerateAction') {
+                        button.title = 'Generate text using an LLM';
+                    } else if (node.name === 'LogLikelihoodAction') {
+                        button.title = 'Calculate LLM probabilities of several completions of a string';
+                    } else if (node.name === 'LogLikelihoodRollingAction') {
+                        button.title = 'Calculate LLM probability of a single string';
+                    }
+                    break;
+                case 'condition':
+                    if (node.name === 'CustomCondition') {
+                        button.title = 'Create a custom condition node';
+                    } else if (node.name === 'LMCompletionCondition') {
+                        button.title = 'Check a condition using an LLM';
+                    }
+                    break;
+                case 'control':
+                    if (node.name === 'Fallback') {
+                        button.title = 'Execute children in sequence until one succeeds';
+                    } else if (node.name === 'Sequence') {
+                        button.title = 'Execute children in sequence until one fails';
+                    }
+                    break;
+                case 'decorator':
+                    switch (node.name) {
+                        case 'Inverter':
+                            button.title = 'Invert the result of child node';
+                            break;
+                        case 'Repeat':
+                            button.title = 'Repeatedly execute child node';
+                            break;
+                        case 'Retry':
+                            button.title = 'Retry child node on failure';
+                            break;
+                        case 'RunOnce':
+                            button.title = 'Runs child exactly once';
+                            break;
+                        case 'Timeout':
+                            button.title = 'Limit the execution time of child node';
+                            break;
+                        case 'History':
+                            button.title = 'Track the updates to a blackboard entry';
+                            break;
+                        case 'ForceFailure':
+                            button.title = 'Return failure regardless of child result';
+                            break;
+                        case 'ForceSuccess':
+                            button.title = 'Return success regardless of child result';
+                            break;
+                    }
+                    break;
+            }
+            
             button.onclick = () => {
                 const canvasManager = (window as any).canvasManager;
                 if (canvasManager) {
