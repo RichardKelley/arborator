@@ -631,6 +631,11 @@ class CanvasManager {
     }
 
     private handleKeyDown(e: KeyboardEvent) {
+        // Don't handle keyboard shortcuts if user is typing in an input field
+        const activeElement = document.activeElement;
+        const isTyping = activeElement instanceof HTMLInputElement || 
+                        activeElement instanceof HTMLTextAreaElement;
+
         if (e.key === 'x') {
             const numSelectedNodes = this.selectedNodes.size;
             const numSelectedConnections = this.selectedConnections.size;
@@ -644,7 +649,7 @@ class CanvasManager {
                     this.showDeleteConfirmationModal(numSelectedNodes, numSelectedConnections);
                 }
             }
-        } else if (e.key === 'h') {
+        } else if (e.key === 'h' && !isTyping) {
             // Check if help modal already exists
             const existingModal = document.querySelector('.modal-overlay');
             if (!existingModal) {
