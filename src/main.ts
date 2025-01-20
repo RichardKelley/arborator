@@ -4,6 +4,14 @@ import * as path from 'path'
 app.name = 'Arborator'
 
 let mainWindow: BrowserWindow | null = null
+let isDarkMode = false
+
+// Add IPC handler for initial theme state
+ipcMain.handle('get-theme-state', () => isDarkMode);
+ipcMain.on('set-theme-state', (_, dark) => {
+    isDarkMode = dark;
+    createMenu(); // Recreate menu to update checkmark
+});
 
 function createMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -40,7 +48,17 @@ function createMenu() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Dark Mode',
+          type: 'checkbox',
+          checked: isDarkMode,
+          click: () => {
+            isDarkMode = !isDarkMode;
+            mainWindow?.webContents.send('theme-changed', isDarkMode);
+          }
+        }
       ]
     },
     {

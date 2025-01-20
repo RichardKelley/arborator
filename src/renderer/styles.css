@@ -1,3 +1,61 @@
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --border-color: #ccc;
+  --hover-bg: rgba(0, 0, 0, 0.1);
+  --ribbon-bg: #f0f0f0;
+  --ribbon-tabs-bg: #e8e8e8;
+  --ribbon-tab-active-border: #007acc;
+  --ribbon-button-bg: white;
+  --ribbon-button-hover-bg: #f5f5f5;
+  --ribbon-button-active-bg: #e0e0e0;
+  --ribbon-group-label: #666;
+  --modal-overlay-bg: rgba(0, 0, 0, 0.5);
+  --modal-bg: white;
+  --tree-canvas-bg: white;
+  --sidebar-bg: #f8f8f8;
+  --sidebar-title-border: #666;
+  --input-bg: white;
+  --input-border: #ccc;
+  --node-bg: #f0f0f0;
+  --node-border: #666;
+  --node-text: #000000;
+  --node-selected: #ff0000;
+  --node-connection-bg: #e0e0e0;
+  --node-connection-selected: #ffcccc;
+  --connection-line: #666;
+  --connection-selected: #ff0000;
+}
+
+:root[data-theme="dark"] {
+  --bg-color: #1e1e1e;
+  --text-color: #ffffff;
+  --border-color: #444;
+  --hover-bg: rgba(255, 255, 255, 0.1);
+  --ribbon-bg: #2d2d2d;
+  --ribbon-tabs-bg: #252526;
+  --ribbon-tab-active-border: #0078d4;
+  --ribbon-button-bg: #3c3c3c;
+  --ribbon-button-hover-bg: #505050;
+  --ribbon-button-active-bg: #606060;
+  --ribbon-group-label: #888;
+  --modal-overlay-bg: rgba(0, 0, 0, 0.7);
+  --modal-bg: #2d2d2d;
+  --tree-canvas-bg: #1e1e1e;
+  --sidebar-bg: #252526;
+  --sidebar-title-border: #888;
+  --input-bg: #3c3c3c;
+  --input-border: #555;
+  --node-bg: #2d2d2d;
+  --node-border: #888;
+  --node-text: #ffffff;
+  --node-selected: #0078d4;
+  --node-connection-bg: #3c3c3c;
+  --node-connection-selected: #0078d4;
+  --connection-line: #888;
+  --connection-selected: #0078d4;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -5,6 +63,8 @@ body {
   display: flex;
   flex-direction: column;
   user-select: none; /* Prevent text selection while dragging */
+  background-color: var(--bg-color);
+  color: var(--text-color);
 }
 
 .main-layout {
@@ -17,6 +77,12 @@ body {
   width: 20%;
   height: 100%;
   flex-shrink: 0;
+  padding: 20px;
+  background-color: var(--sidebar-bg);
+  border-left: 1px solid var(--border-color);
+  overflow-y: auto;
+  color: var(--text-color);
+  box-sizing: border-box;
 }
 
 #column-resizer {
@@ -25,14 +91,14 @@ body {
   background: transparent;
   cursor: col-resize;
   transition: background 0.2s;
-  border-left: 1px solid #ccc;
-  border-right: 1px solid #ccc;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
   box-sizing: border-box;
 }
 
 #column-resizer:hover,
 #column-resizer.dragging {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--hover-bg);
 }
 
 #main-canvas {
@@ -48,22 +114,22 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: white;
+  background-color: var(--tree-canvas-bg);
 }
 
 .ribbon-container {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background-color: #f0f0f0;
+  background-color: var(--ribbon-bg);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .ribbon-tabs {
   display: flex;
   padding: 0 16px;
-  border-bottom: 1px solid #ccc;
-  background-color: #e8e8e8;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--ribbon-tabs-bg);
 }
 
 .ribbon-tab {
@@ -72,15 +138,16 @@ body {
   transition: all 0.2s;
   position: relative;
   font-size: 12px;
+  color: var(--text-color);
 }
 
 .ribbon-tab:hover {
-  background-color: #f0f0f0;
+  background-color: var(--hover-bg);
 }
 
 .ribbon-tab.active {
-  background-color: #f0f0f0;
-  border-bottom: 2px solid #007acc;
+  background-color: var(--ribbon-bg);
+  border-bottom: 2px solid var(--ribbon-tab-active-border);
   margin-bottom: -1px;
 }
 
@@ -115,12 +182,12 @@ body {
   top: 0;
   height: 100%;
   width: 1px;
-  background-color: #ccc;
+  background-color: var(--border-color);
 }
 
 .ribbon-group-label {
   font-size: 11px;
-  color: #666;
+  color: var(--ribbon-group-label);
   text-align: center;
   padding: 1px 0;
   order: -1;
@@ -134,8 +201,8 @@ body {
 
 .ribbon-button {
   padding: 3px 8px;
-  border: 1px solid #ccc;
-  background-color: white;
+  border: 1px solid var(--border-color);
+  background-color: var(--ribbon-button-bg);
   cursor: pointer;
   border-radius: 3px;
   transition: all 0.2s;
@@ -144,16 +211,15 @@ body {
   display: flex;
   align-items: center;
   white-space: nowrap;
+  color: var(--text-color);
 }
 
 .ribbon-button:hover {
-  background-color: #f5f5f5;
-  border-color: #999;
+  background-color: var(--ribbon-button-hover-bg);
 }
 
 .ribbon-button:active {
-  background-color: #e0e0e0;
-  border-color: #666;
+  background-color: var(--ribbon-button-active-bg);
 }
 
 .modal-overlay {
@@ -162,7 +228,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--modal-overlay-bg);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -170,11 +236,12 @@ body {
 }
 
 .modal {
-    background-color: white;
+    background-color: var(--modal-bg);
     padding: 24px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     min-width: 300px;
+    color: var(--text-color);
 }
 
 .modal-title {
@@ -224,4 +291,92 @@ body {
 
 .modal-button-secondary:hover {
     background-color: #e0e0e0;
+}
+
+.right-column-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--sidebar-title-border);
+    color: var(--text-color);
+}
+
+.custom-name-container {
+    margin-bottom: 20px;
+}
+
+.custom-name-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.custom-name-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.configs-container {
+    margin-top: 20px;
+}
+
+.config-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+}
+
+.config-title {
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.config-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.config-field.checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.config-field label {
+    color: var(--text-color);
+    font-size: 13px;
+}
+
+#right-column input[type="text"],
+#right-column input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    margin: 0;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    box-sizing: border-box;
+}
+
+#right-column input[type="checkbox"] {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+}
+
+#right-column .config-field.checkbox label {
+    order: 2;
+    margin: 0;
 } 

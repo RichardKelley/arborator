@@ -10,6 +10,9 @@ declare global {
             saveTree: (treeData: any) => Promise<string | undefined>;
             openTree: () => Promise<any>;
             showSaveConfirmation: () => Promise<'save' | 'discard' | 'cancel'>;
+            onThemeChanged: (callback: (isDark: boolean) => void) => void;
+            getThemeState: () => Promise<boolean>;
+            setThemeState: (isDark: boolean) => void;
         }
     }
 }
@@ -72,7 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     showSaveConfirmation: async () => {
         return ipcRenderer.invoke('show-save-confirmation');
-    }
+    },
+    onThemeChanged: (callback: (isDark: boolean) => void) => {
+        ipcRenderer.on('theme-changed', (_, isDark) => callback(isDark));
+    },
+    getThemeState: () => ipcRenderer.invoke('get-theme-state'),
+    setThemeState: (isDark: boolean) => ipcRenderer.send('set-theme-state', isDark)
 });
 
 window.addEventListener('DOMContentLoaded', () => {

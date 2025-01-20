@@ -20,7 +20,6 @@ class RightColumn {
             throw new Error('Right column container not found');
         }
         this.container = container;
-        this.initializeStyles();
         this.loadConfigs();
     }
 
@@ -32,103 +31,6 @@ class RightColumn {
         }
     }
 
-    private initializeStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            #right-column {
-                padding: 20px;
-                background-color: #f8f8f8;
-                border-left: 1px solid #ccc;
-                overflow-y: auto;
-            }
-
-            .right-column-title {
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 20px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #666;
-            }
-
-            .custom-name-container {
-                margin-bottom: 20px;
-            }
-
-            .custom-name-label {
-                display: block;
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-
-            .custom-name-input {
-                width: calc(100% - 16px);
-                padding: 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-
-            .configs-container {
-                margin-top: 20px;
-            }
-
-            .config-section {
-                margin-bottom: 20px;
-                padding: 15px;
-                background: white;
-                border-radius: 6px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-
-            .config-title {
-                font-weight: bold;
-                margin-bottom: 15px;
-                font-size: 16px;
-                color: #333;
-            }
-
-            .config-fields {
-                display: grid;
-                gap: 12px;
-            }
-
-            .config-field {
-                display: grid;
-                grid-template-columns: 120px minmax(140px, 1fr);
-                align-items: center;
-                gap: 10px;
-            }
-
-            .config-field label {
-                font-size: 13px;
-                color: #666;
-                text-align: right;
-            }
-
-            .config-field input {
-                width: 100%;
-                min-width: 140px;
-                padding: 6px 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-                box-sizing: border-box;
-            }
-
-            .config-field input[type="checkbox"] {
-                width: auto;
-                min-width: auto;
-                margin: 0;
-                justify-self: start;
-            }
-
-            .config-field.checkbox {
-                align-items: center;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
     displayNode(node: NodeConfig) {
         if (!node) return;
         
@@ -138,7 +40,7 @@ class RightColumn {
         // Title (node type)
         const title = document.createElement('div');
         title.className = 'right-column-title';
-        title.textContent = node.name;
+        title.textContent = node.customName || node.name;
         this.container.appendChild(title);
 
         // Custom name input

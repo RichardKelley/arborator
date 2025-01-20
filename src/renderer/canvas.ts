@@ -234,6 +234,15 @@ class CanvasManager {
         const radius = 10;
         const connectionPointRadius = 5;
         
+        // Get theme colors
+        const computedStyle = getComputedStyle(document.documentElement);
+        const nodeBg = computedStyle.getPropertyValue('--node-bg');
+        const nodeBorder = computedStyle.getPropertyValue('--node-border');
+        const nodeText = computedStyle.getPropertyValue('--node-text');
+        const nodeSelected = computedStyle.getPropertyValue('--node-selected');
+        const nodeConnectionBg = computedStyle.getPropertyValue('--node-connection-bg');
+        const nodeConnectionSelected = computedStyle.getPropertyValue('--node-connection-selected');
+        
         // Draw main node rectangle with rounded corners
         this.ctx.beginPath();
         this.ctx.moveTo(node.x + radius, node.y);
@@ -248,20 +257,20 @@ class CanvasManager {
         this.ctx.closePath();
 
         // Fill
-        this.ctx.fillStyle = '#f0f0f0';
+        this.ctx.fillStyle = nodeBg;
         this.ctx.fill();
         
-        // Stroke - red if selected, default color otherwise
-        this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
+        // Stroke - selected color if selected, default color otherwise
+        this.ctx.strokeStyle = this.selectedNodes.has(node) ? nodeSelected : nodeBorder;
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
         // Draw connection point circle at the top center
         this.ctx.beginPath();
         this.ctx.arc(node.x + node.width / 2, node.y, connectionPointRadius, 0, Math.PI * 2);
-        this.ctx.fillStyle = this.selectedNodes.has(node) ? '#ffcccc' : '#e0e0e0';
+        this.ctx.fillStyle = this.selectedNodes.has(node) ? nodeConnectionSelected : nodeConnectionBg;
         this.ctx.fill();
-        this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
+        this.ctx.strokeStyle = this.selectedNodes.has(node) ? nodeSelected : nodeBorder;
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
@@ -269,19 +278,19 @@ class CanvasManager {
         if (node.has_children) {
             this.ctx.beginPath();
             this.ctx.arc(node.x + node.width / 2, node.y + node.height, connectionPointRadius, 0, Math.PI * 2);
-            this.ctx.fillStyle = this.selectedNodes.has(node) ? '#ffcccc' : '#e0e0e0';
+            this.ctx.fillStyle = this.selectedNodes.has(node) ? nodeConnectionSelected : nodeConnectionBg;
             this.ctx.fill();
-            this.ctx.strokeStyle = this.selectedNodes.has(node) ? '#ff0000' : '#666';
+            this.ctx.strokeStyle = this.selectedNodes.has(node) ? nodeSelected : nodeBorder;
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
         }
 
-        // Text - always display the type
-        this.ctx.fillStyle = '#000';
+        // Text
+        this.ctx.fillStyle = nodeText;
         this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(node.name, node.x + node.width / 2, node.y + node.height / 2);
+        this.ctx.fillText(node.customName || node.name, node.x + node.width / 2, node.y + node.height / 2);
     }
 
     private getNodeAtPosition(x: number, y: number): CanvasNode | null {
@@ -521,6 +530,11 @@ class CanvasManager {
     }
 
     private drawConnections() {
+        // Get theme colors
+        const computedStyle = getComputedStyle(document.documentElement);
+        const connectionLine = computedStyle.getPropertyValue('--connection-line');
+        const connectionSelected = computedStyle.getPropertyValue('--connection-selected');
+
         for (const connection of this.connections) {
             const fromX = connection.fromNode.x + connection.fromNode.width / 2;
             const fromY = connection.fromNode.y + connection.fromNode.height;
@@ -528,7 +542,7 @@ class CanvasManager {
             const toY = connection.toNode.y;
             
             // Set line style based on selection
-            this.ctx.strokeStyle = this.selectedConnections.has(connection) ? '#ff0000' : '#666';
+            this.ctx.strokeStyle = this.selectedConnections.has(connection) ? connectionSelected : connectionLine;
             this.ctx.lineWidth = this.selectedConnections.has(connection) ? 3 : 2;
             
             this.drawConnectionLine(fromX, fromY, toX, toY);
