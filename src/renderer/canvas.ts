@@ -11,6 +11,7 @@ interface CanvasNode {
     has_children: boolean;
     configs?: string[];
     configValues?: { [key: string]: { [key: string]: any } };
+    collapsed?: boolean;
 }
 
 interface Connection {
@@ -61,6 +62,7 @@ class CanvasManager {
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+        this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
         
         // Add keyboard event listener for deleting connections
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -199,7 +201,12 @@ class CanvasManager {
         );
         
         // Draw all connections first (so they appear behind nodes)
-        this.drawConnections();
+        this.connections.forEach(conn => {
+            const shouldDraw = !this.isNodeHidden(conn.fromNode) && !this.isNodeHidden(conn.toNode);
+            if (shouldDraw) {
+                this.drawConnection(conn);
+            }
+        });
         
         // Draw temporary connection line if we're drawing one
         if (this.isDrawingConnection && this.connectionStartNode) {
@@ -225,9 +232,11 @@ class CanvasManager {
             this.ctx.setLineDash([]);
         }
         
-        // Draw all nodes
+        // Draw all visible nodes
         for (const node of this.nodes) {
-            this.drawNode(node);
+            if (!this.isNodeHidden(node)) {
+                this.drawNode(node);
+            }
         }
     }
 
@@ -284,6 +293,15 @@ class CanvasManager {
             this.ctx.strokeStyle = this.selectedNodes.has(node) ? nodeSelected : nodeBorder;
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
+
+            // Draw ellipsis if node is collapsed
+            if (node.collapsed) {
+                this.ctx.fillStyle = nodeText;
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('...', node.x + node.width / 2, node.y + node.height + 20);
+            }
         }
 
         // Text
@@ -492,16 +510,35 @@ class CanvasManager {
             const dx = x - this.dragOffset.x - this.draggedNode.x;
             const dy = y - this.dragOffset.y - this.draggedNode.y;
 
-            // If the dragged node is selected, move all selected nodes
+            // If the dragged node is selected, move all selected nodes and their descendants
             if (this.selectedNodes.has(this.draggedNode)) {
+                const nodesToMove = new Set<CanvasNode>();
+                
+                // Add all selected nodes and their descendants
                 this.selectedNodes.forEach(node => {
+                    nodesToMove.add(node);
+                    if (node.has_children) {
+                        this.getDescendantNodes(node).forEach(descendant => nodesToMove.add(descendant));
+                    }
+                });
+
+                // Move all nodes in the set
+                nodesToMove.forEach(node => {
                     node.x += dx;
                     node.y += dy;
                 });
             } else {
-                // If dragging an unselected node, just move that node
+                // If dragging an unselected node, move it and its descendants
                 this.draggedNode.x = x - this.dragOffset.x;
                 this.draggedNode.y = y - this.dragOffset.y;
+                
+                if (this.draggedNode.has_children) {
+                    const descendants = this.getDescendantNodes(this.draggedNode);
+                    descendants.forEach(node => {
+                        node.x += dx;
+                        node.y += dy;
+                    });
+                }
             }
             this.draw();
         }
@@ -543,23 +580,27 @@ class CanvasManager {
     }
 
     private drawConnections() {
+        for (const connection of this.connections) {
+            this.drawConnection(connection);
+        }
+    }
+
+    private drawConnection(connection: Connection) {
+        const fromX = connection.fromNode.x + connection.fromNode.width / 2;
+        const fromY = connection.fromNode.y + connection.fromNode.height;
+        const toX = connection.toNode.x + connection.toNode.width / 2;
+        const toY = connection.toNode.y;
+        
         // Get theme colors
         const computedStyle = getComputedStyle(document.documentElement);
         const connectionLine = computedStyle.getPropertyValue('--connection-line');
         const connectionSelected = computedStyle.getPropertyValue('--connection-selected');
-
-        for (const connection of this.connections) {
-            const fromX = connection.fromNode.x + connection.fromNode.width / 2;
-            const fromY = connection.fromNode.y + connection.fromNode.height;
-            const toX = connection.toNode.x + connection.toNode.width / 2;
-            const toY = connection.toNode.y;
-            
-            // Set line style based on selection
-            this.ctx.strokeStyle = this.selectedConnections.has(connection) ? connectionSelected : connectionLine;
-            this.ctx.lineWidth = this.selectedConnections.has(connection) ? 3 : 2;
-            
-            this.drawConnectionLine(fromX, fromY, toX, toY);
-        }
+        
+        // Set line style based on selection
+        this.ctx.strokeStyle = this.selectedConnections.has(connection) ? connectionSelected : connectionLine;
+        this.ctx.lineWidth = this.selectedConnections.has(connection) ? 3 : 2;
+        
+        this.drawConnectionLine(fromX, fromY, toX, toY);
     }
 
     private drawConnectionLine(fromX: number, fromY: number, toX: number, toY: number) {
@@ -1198,6 +1239,47 @@ class CanvasManager {
 
     private isMac() {
         return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    }
+
+    private handleDoubleClick(e: MouseEvent) {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const { x, y } = this.screenToCanvas(screenX, screenY);
+
+        const node = this.getNodeAtPosition(x, y);
+        if (node && node.has_children) {
+            node.collapsed = !node.collapsed;
+            this.draw();
+        }
+    }
+
+    private isNodeHidden(node: CanvasNode): boolean {
+        // Check if any parent node is collapsed
+        const parentConnection = this.connections.find(conn => conn.toNode === node);
+        if (parentConnection) {
+            const parent = parentConnection.fromNode;
+            return parent.collapsed || this.isNodeHidden(parent);
+        }
+        return false;
+    }
+
+    private getDescendantNodes(node: CanvasNode): Set<CanvasNode> {
+        const descendants = new Set<CanvasNode>();
+        const stack = [node];
+
+        while (stack.length > 0) {
+            const current = stack.pop()!;
+            // Find all child nodes through connections
+            this.connections
+                .filter(conn => conn.fromNode === current)
+                .forEach(conn => {
+                    descendants.add(conn.toNode);
+                    stack.push(conn.toNode);
+                });
+        }
+
+        return descendants;
     }
 }
 
