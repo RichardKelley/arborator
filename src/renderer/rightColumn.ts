@@ -4,6 +4,7 @@ interface NodeConfig {
     type: string;
     has_children: boolean;
     customName?: string;
+    customType?: string;
     configs?: string[];
 }
 
@@ -11,6 +12,7 @@ class RightColumn {
     private container: HTMLElement;
     private currentNode: NodeConfig | null = null;
     private customNameInput: HTMLInputElement | null = null;
+    private customTypeInput: HTMLInputElement | null = null;
     private configsContainer: HTMLElement | null = null;
     private nodeConfigs: { [key: string]: any } = {};
 
@@ -40,8 +42,36 @@ class RightColumn {
         // Title (node type)
         const title = document.createElement('div');
         title.className = 'right-column-title';
-        title.textContent = node.customName || node.name;
+        title.textContent = (node.name === 'CustomAction' || node.name === 'CustomCondition') ? node.name : node.name;
         this.container.appendChild(title);
+
+        // Custom type input for CustomAction and CustomCondition nodes
+        if (node.name === 'CustomAction' || node.name === 'CustomCondition') {
+            const customTypeContainer = document.createElement('div');
+            customTypeContainer.className = 'custom-name-container';
+
+            const customTypeLabel = document.createElement('label');
+            customTypeLabel.className = 'custom-name-label';
+            customTypeLabel.textContent = 'Custom Type';
+            customTypeContainer.appendChild(customTypeLabel);
+
+            this.customTypeInput = document.createElement('input');
+            this.customTypeInput.className = 'custom-name-input';
+            this.customTypeInput.type = 'text';
+            this.customTypeInput.value = node.customType || '';
+            this.customTypeInput.placeholder = 'Enter the custom type';
+            
+            // Add event listener for input changes
+            this.customTypeInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                if (this.currentNode) {
+                    (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, target.value);
+                }
+            });
+            
+            customTypeContainer.appendChild(this.customTypeInput);
+            this.container.appendChild(customTypeContainer);
+        }
 
         // Custom name input
         const customNameContainer = document.createElement('div');
@@ -180,6 +210,8 @@ class RightColumn {
 
     clear() {
         this.currentNode = null;
+        this.customNameInput = null;
+        this.customTypeInput = null;
         this.container.innerHTML = '';
     }
 }

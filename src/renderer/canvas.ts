@@ -3,6 +3,7 @@ interface CanvasNode {
     type: string;
     name: string;
     customName?: string;
+    customType?: string;
     x: number;
     y: number;
     width: number;
@@ -42,7 +43,7 @@ class CanvasManager {
     private selectionStart = { x: 0, y: 0 };
     
     // Fixed dimensions for nodes
-    private static readonly NODE_HEIGHT = 50;
+    private static readonly NODE_HEIGHT = 60;
     private static readonly MIN_NODE_WIDTH = 150;
     private static readonly TEXT_PADDING = 20;
     private static readonly CONNECTION_POINT_RADIUS = 5;
@@ -287,10 +288,22 @@ class CanvasManager {
 
         // Text
         this.ctx.fillStyle = nodeText;
-        this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(node.customName || node.name, node.x + node.width / 2, node.y + node.height / 2);
+        
+        if (node.customName) {
+            // Draw node type with larger font, shifted up
+            this.ctx.font = '16px Arial';
+            this.ctx.fillText(node.customType || node.name, node.x + node.width / 2, node.y + node.height / 2 - 10);
+            
+            // Draw custom name with smaller font, shifted down
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText(node.customName, node.x + node.width / 2, node.y + node.height / 2 + 10);
+        } else {
+            // Draw node type centered in the node
+            this.ctx.font = '16px Arial';
+            this.ctx.fillText(node.customType || node.name, node.x + node.width / 2, node.y + node.height / 2);
+        }
     }
 
     private getNodeAtPosition(x: number, y: number): CanvasNode | null {
@@ -746,6 +759,15 @@ class CanvasManager {
         }
     }
 
+    // Add method to update node custom type
+    updateNodeCustomType(nodeId: string, customType: string) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.customType = customType;
+            this.draw();
+        }
+    }
+
     // Serialize the tree structure to JSON
     serializeTree() {
         // Create a simplified version of nodes with only logical information
@@ -754,6 +776,7 @@ class CanvasManager {
             type: node.type,
             name: node.name,
             customName: node.customName,
+            customType: node.customType,
             has_children: node.has_children,
             configs: node.configs,
             configValues: node.configValues
