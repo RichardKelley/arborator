@@ -644,6 +644,12 @@ class CanvasManager {
                     this.showDeleteConfirmationModal(numSelectedNodes, numSelectedConnections);
                 }
             }
+        } else if (e.key === 'h') {
+            // Check if help modal already exists
+            const existingModal = document.querySelector('.modal-overlay');
+            if (!existingModal) {
+                this.showHelpModal();
+            }
         }
     }
 
@@ -655,6 +661,8 @@ class CanvasManager {
         // Create modal
         const modal = document.createElement('div');
         modal.className = 'modal';
+        modal.style.backgroundColor = 'var(--bg-color)';
+        modal.style.color = 'var(--text-color)';
 
         // Create modal title
         const title = document.createElement('div');
@@ -1103,6 +1111,88 @@ class CanvasManager {
 
             return true; // Line intersects the box
         }
+    }
+
+    private showHelpModal() {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.backgroundColor = 'var(--bg-color)';
+        modal.style.color = 'var(--text-color)';
+
+        // Create title
+        const title = document.createElement('h2');
+        title.className = 'modal-title';
+        title.textContent = 'Help';
+
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+
+        // Create keyboard shortcuts list
+        const shortcuts = document.createElement('ul');
+        shortcuts.style.listStyle = 'none';
+        shortcuts.style.padding = '0';
+        shortcuts.style.margin = '0';
+
+        const shortcutItems = [
+            { key: 'h', description: 'Show this help menu' },
+            { key: this.isMac() ? 'Command + Click' : 'Control + Click', description: 'Select a node or connection' },
+            { key: 'Shift + Drag', description: 'Group select nodes and connections' },
+            { key: 'x', description: 'Delete selected nodes and connections' },
+            { key: 'Escape', description: 'Close this help menu' }
+        ];
+
+        shortcutItems.forEach(item => {
+            const li = document.createElement('li');
+            li.style.marginBottom = '10px';
+            
+            const keySpan = document.createElement('span');
+            keySpan.style.backgroundColor = 'var(--modal-key-bg)';
+            keySpan.style.color = 'var(--modal-key-text)';
+            keySpan.style.padding = '2px 6px';
+            keySpan.style.borderRadius = '4px';
+            keySpan.style.marginRight = '8px';
+            keySpan.textContent = item.key;
+
+            li.appendChild(keySpan);
+            li.appendChild(document.createTextNode(item.description));
+            shortcuts.appendChild(li);
+        });
+
+        content.appendChild(shortcuts);
+
+        // Assemble modal
+        modal.appendChild(title);
+        modal.appendChild(content);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // Close on escape key
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                document.body.removeChild(overlay);
+                document.removeEventListener('keydown', handleKeyDown);
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+
+        // Close on click outside modal
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+                document.removeEventListener('keydown', handleKeyDown);
+            }
+        });
+    }
+
+    private isMac() {
+        return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     }
 }
 
