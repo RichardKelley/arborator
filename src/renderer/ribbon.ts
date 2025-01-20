@@ -100,7 +100,7 @@ function createNodeButtons(content: HTMLElement, nodeTypes: NodeTypes) {
             
             const button = document.createElement('button');
             button.className = 'ribbon-button';
-            button.textContent = node.name;
+            button.textContent = node.name === 'CustomAction' || node.name === 'CustomCondition' ? 'Custom' : node.name;
             button.dataset.type = node.type;
             button.onclick = () => {
                 const canvasManager = (window as any).canvasManager;
@@ -132,7 +132,7 @@ function createCustomButtons(content: HTMLElement) {
     // Create CustomAction button
     const actionButton = document.createElement('button');
     actionButton.className = 'ribbon-button';
-    actionButton.textContent = 'CustomAction';
+    actionButton.textContent = 'Custom';
     actionButton.dataset.type = 'action';
     actionButton.onclick = () => {
         const canvasManager = (window as any).canvasManager;
@@ -145,7 +145,7 @@ function createCustomButtons(content: HTMLElement) {
     // Create CustomCondition button
     const conditionButton = document.createElement('button');
     conditionButton.className = 'ribbon-button';
-    conditionButton.textContent = 'CustomCondition';
+    conditionButton.textContent = 'Custom';
     conditionButton.dataset.type = 'condition';
     conditionButton.onclick = () => {
         const canvasManager = (window as any).canvasManager;
