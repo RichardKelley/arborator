@@ -731,6 +731,60 @@ class CanvasManager {
                     this.showDeleteConfirmationModal(numSelectedNodes, numSelectedConnections);
                 }
             }
+        } else if (e.key === 'd' && !isTyping) {
+            // Handle duplication of selected nodes and connections
+            if (this.selectedNodes.size > 0) {
+                // Create a map to store original node to duplicate node mapping
+                const nodeMap = new Map<CanvasNode, CanvasNode>();
+                
+                // First pass: create duplicates of all selected nodes
+                this.selectedNodes.forEach(node => {
+                    const duplicate: CanvasNode = {
+                        ...node,
+                        id: Math.random().toString(36).substr(2, 9),
+                        x: node.x + 50, // Offset to the right
+                        y: node.y,
+                        configValues: JSON.parse(JSON.stringify(node.configValues || {}))
+                    };
+
+                    // Handle custom names
+                    if (duplicate.customName) {
+                        let newName = `${duplicate.customName}_copy`;
+                        let counter = 1;
+                        while (this.usedNames.has(newName)) {
+                            newName = `${duplicate.customName}_copy_${counter}`;
+                            counter++;
+                        }
+                        this.usedNames.add(newName);
+                        duplicate.customName = newName;
+                    }
+
+                    nodeMap.set(node, duplicate);
+                    this.nodes.push(duplicate);
+                });
+
+                // Second pass: create connections between duplicated nodes
+                this.selectedConnections.forEach(conn => {
+                    // Only duplicate connection if both nodes were selected
+                    const fromDuplicate = nodeMap.get(conn.fromNode);
+                    const toDuplicate = nodeMap.get(conn.toNode);
+                    if (fromDuplicate && toDuplicate) {
+                        this.connections.push({
+                            fromNode: fromDuplicate,
+                            toNode: toDuplicate
+                        });
+                    }
+                });
+
+                // Clear current selection and select the duplicates
+                this.selectedNodes.clear();
+                this.selectedConnections.clear();
+                nodeMap.forEach((duplicate) => {
+                    this.selectedNodes.add(duplicate);
+                });
+
+                this.draw();
+            }
         } else if (e.key === 'h' && !isTyping) {
             // Check if help modal already exists
             const existingModal = document.querySelector('.modal-overlay');
@@ -1302,6 +1356,7 @@ class CanvasManager {
             { key: this.isMac() ? 'Command + Click' : 'Control + Click', description: 'Select a node or connection' },
             { key: 'Shift + Drag', description: 'Group select nodes and connections' },
             { key: 'x', description: 'Delete selected nodes and connections' },
+            { key: 'd', description: 'Duplicate selected nodes and connections' },
             { key: 'Escape', description: 'Close this help menu' }
         ];
 
