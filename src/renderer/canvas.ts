@@ -242,7 +242,7 @@ class CanvasManager {
     }
 
     private drawNode(node: CanvasNode) {
-        const radius = 10;
+        const radius = node.type === 'blackboard' ? 0 : 10;
         const connectionPointRadius = 5;
         
         // Get theme colors
@@ -254,17 +254,21 @@ class CanvasManager {
         const nodeConnectionBg = computedStyle.getPropertyValue('--node-connection-bg');
         const nodeConnectionSelected = computedStyle.getPropertyValue('--node-connection-selected');
         
-        // Draw main node rectangle with rounded corners
+        // Draw main node rectangle with rounded corners (or square for blackboard)
         this.ctx.beginPath();
-        this.ctx.moveTo(node.x + radius, node.y);
-        this.ctx.lineTo(node.x + node.width - radius, node.y);
-        this.ctx.quadraticCurveTo(node.x + node.width, node.y, node.x + node.width, node.y + radius);
-        this.ctx.lineTo(node.x + node.width, node.y + node.height - radius);
-        this.ctx.quadraticCurveTo(node.x + node.width, node.y + node.height, node.x + node.width - radius, node.y + node.height);
-        this.ctx.lineTo(node.x + radius, node.y + node.height);
-        this.ctx.quadraticCurveTo(node.x, node.y + node.height, node.x, node.y + node.height - radius);
-        this.ctx.lineTo(node.x, node.y + radius);
-        this.ctx.quadraticCurveTo(node.x, node.y, node.x + radius, node.y);
+        if (node.type === 'blackboard') {
+            this.ctx.rect(node.x, node.y, node.width, node.height);
+        } else {
+            this.ctx.moveTo(node.x + radius, node.y);
+            this.ctx.lineTo(node.x + node.width - radius, node.y);
+            this.ctx.quadraticCurveTo(node.x + node.width, node.y, node.x + node.width, node.y + radius);
+            this.ctx.lineTo(node.x + node.width, node.y + node.height - radius);
+            this.ctx.quadraticCurveTo(node.x + node.width, node.y + node.height, node.x + node.width - radius, node.y + node.height);
+            this.ctx.lineTo(node.x + radius, node.y + node.height);
+            this.ctx.quadraticCurveTo(node.x, node.y + node.height, node.x, node.y + node.height - radius);
+            this.ctx.lineTo(node.x, node.y + radius);
+            this.ctx.quadraticCurveTo(node.x, node.y, node.x + radius, node.y);
+        }
         this.ctx.closePath();
 
         // Fill
@@ -564,42 +568,30 @@ class CanvasManager {
                     this.isOverConnectionPoint(node, x, y, true)) {
                     // Check if the target node already has a parent
                     if (this.hasParent(node)) {
-                        // Show error message
-                        const errorMessage = document.createElement('div');
-                        errorMessage.className = 'error-message';
-                        errorMessage.textContent = 'Nodes can only have one parent';
-                        errorMessage.style.position = 'fixed';
-                        errorMessage.style.top = '20px';
-                        errorMessage.style.left = '50%';
-                        errorMessage.style.transform = 'translateX(-50%)';
-                        errorMessage.style.backgroundColor = '#ff4444';
-                        errorMessage.style.color = 'white';
-                        errorMessage.style.padding = '10px 20px';
-                        errorMessage.style.borderRadius = '5px';
-                        errorMessage.style.zIndex = '1000';
-                        document.body.appendChild(errorMessage);
-                        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+                        this.showErrorMessage('Nodes can only have one parent');
                         break;
                     }
 
                     // Check if the source node is a decorator and already has a child
                     if (this.connectionStartNode.type === 'decorator' && this.getNodeChildCount(this.connectionStartNode) > 0) {
-                        // Show error message
-                        const errorMessage = document.createElement('div');
-                        errorMessage.className = 'error-message';
-                        errorMessage.textContent = 'Decorator nodes can only have one child';
-                        errorMessage.style.position = 'fixed';
-                        errorMessage.style.top = '20px';
-                        errorMessage.style.left = '50%';
-                        errorMessage.style.transform = 'translateX(-50%)';
-                        errorMessage.style.backgroundColor = '#ff4444';
-                        errorMessage.style.color = 'white';
-                        errorMessage.style.padding = '10px 20px';
-                        errorMessage.style.borderRadius = '5px';
-                        errorMessage.style.zIndex = '1000';
-                        document.body.appendChild(errorMessage);
-                        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+                        this.showErrorMessage('Decorator nodes can only have one child');
                         break;
+                    }
+
+                    // Add validation for root node connections
+                    if (this.connectionStartNode.type === 'root') {
+                        const existingChildren = this.getNodeChildren(this.connectionStartNode);
+                        const hasBlackboard = existingChildren.some(child => child.type === 'blackboard');
+                        const hasRegularNode = existingChildren.some(child => child.type !== 'blackboard');
+
+                        if (node.type === 'blackboard' && hasBlackboard) {
+                            this.showErrorMessage('Root node can only have one blackboard node');
+                            break;
+                        }
+                        if (node.type !== 'blackboard' && hasRegularNode) {
+                            this.showErrorMessage('Root node can only have one regular node');
+                            break;
+                        }
                     }
 
                     // Create the connection
@@ -1455,6 +1447,31 @@ class CanvasManager {
 
     private hasParent(node: CanvasNode): boolean {
         return this.connections.some(conn => conn.toNode === node);
+    }
+
+    // Add helper method to show error messages
+    private showErrorMessage(message: string) {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = message;
+        errorMessage.style.position = 'fixed';
+        errorMessage.style.top = '20px';
+        errorMessage.style.left = '50%';
+        errorMessage.style.transform = 'translateX(-50%)';
+        errorMessage.style.backgroundColor = '#ff4444';
+        errorMessage.style.color = 'white';
+        errorMessage.style.padding = '10px 20px';
+        errorMessage.style.borderRadius = '5px';
+        errorMessage.style.zIndex = '1000';
+        document.body.appendChild(errorMessage);
+        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+    }
+
+    // Add helper method to get node's children
+    private getNodeChildren(node: CanvasNode): CanvasNode[] {
+        return this.connections
+            .filter(conn => conn.fromNode === node)
+            .map(conn => conn.toNode);
     }
 }
 

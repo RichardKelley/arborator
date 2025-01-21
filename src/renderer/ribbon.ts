@@ -238,6 +238,35 @@ function createCustomButtons(content: HTMLElement) {
     content.appendChild(group);
 }
 
+function createBlackboardButtons(content: HTMLElement) {
+    const group = document.createElement('div');
+    group.className = 'ribbon-group';
+
+    const label = document.createElement('div');
+    label.className = 'ribbon-group-label';
+    label.textContent = 'Blackboard';
+    
+    const groupContent = document.createElement('div');
+    groupContent.className = 'ribbon-group-content';
+
+    const button = document.createElement('button');
+    button.className = 'ribbon-button';
+    button.textContent = 'New Blackboard';
+    button.title = 'Create a new blackboard node';
+    button.onclick = () => {
+        const canvasManager = (window as any).canvasManager;
+        if (canvasManager) {
+            canvasManager.addNode('blackboard', 'Blackboard', false)
+                .catch((error: Error) => console.error('Failed to add blackboard node:', error));
+        }
+    };
+    
+    groupContent.appendChild(button);
+    group.appendChild(label);
+    group.appendChild(groupContent);
+    content.appendChild(group);
+}
+
 function switchTab(tab: TabType, nodeTypes: NodeTypes) {
     const ribbon = document.querySelector('.ribbon');
     if (!ribbon) return;
@@ -262,7 +291,7 @@ function switchTab(tab: TabType, nodeTypes: NodeTypes) {
             createFileButtons(content);
             break;
         case 'blackboard':
-            // Empty for now
+            createBlackboardButtons(content);
             break;
     }
 

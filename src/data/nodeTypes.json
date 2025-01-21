@@ -112,5 +112,11 @@
             "has_children": true,
             "configs": []
         }
-    ]
+    ],
+    "blackboard": {
+        "name": "Blackboard",
+        "type": "blackboard",
+        "has_children": false,
+        "configs": []
+    }
 }
