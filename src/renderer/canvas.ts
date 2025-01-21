@@ -176,10 +176,69 @@ class CanvasManager {
             if (!node.configValues[configName]) {
                 node.configValues[configName] = {};
             }
+
+            // Get the old value before updating
+            const oldValue = node.configValues[configName][key];
+            
+            // Update the config value
             node.configValues[configName][key] = value;
+
+            // If this is a key field (ends with "_key") and we have a blackboard node
+            if (key.endsWith('_key')) {
+                // Find the blackboard node (should be a sibling of the root node)
+                const blackboardNode = this.nodes.find(n => {
+                    if (n.type === 'blackboard') {
+                        // Check if this blackboard is connected to the same root as our node
+                        const rootNode = this.findRootNode(node);
+                        if (rootNode) {
+                            const blackboardRoot = this.findRootNode(n);
+                            return rootNode === blackboardRoot;
+                        }
+                    }
+                    return false;
+                });
+
+                if (blackboardNode) {
+                    // Initialize blackboardData if it doesn't exist
+                    if (!blackboardNode.blackboardData) {
+                        blackboardNode.blackboardData = {};
+                    }
+
+                    // If the old value existed and was different, remove it from blackboard
+                    if (oldValue && oldValue !== value) {
+                        delete blackboardNode.blackboardData[oldValue];
+                    }
+
+                    // If new value is not empty, add/update it in blackboard
+                    if (value) {
+                        blackboardNode.blackboardData[value] = '';
+                    }
+
+                    // Update the blackboard display
+                    this.updateNodeBlackboardData(blackboardNode.id, blackboardNode.blackboardData);
+                }
+            }
+
             // Trigger a redraw to ensure any visual updates are applied
             this.draw();
         }
+    }
+
+    // Helper method to find the root node of a given node
+    private findRootNode(node: CanvasNode): CanvasNode | null {
+        // If this is the root node, return it
+        if (node.type === 'root') {
+            return node;
+        }
+
+        // Otherwise, find the node that connects to this one
+        for (const connection of this.connections) {
+            if (connection.toNode === node) {
+                return this.findRootNode(connection.fromNode);
+            }
+        }
+
+        return null;
     }
 
     getNodeConfigValues(nodeId: string): { [key: string]: { [key: string]: any } } | undefined {
