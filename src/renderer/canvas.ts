@@ -42,6 +42,7 @@ class CanvasManager {
     private skipDeleteConfirmation = false;
     private isRectangleSelecting = false;
     private selectionStart = { x: 0, y: 0 };
+    private usedNames: Set<string> = new Set();
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 60;
@@ -561,6 +562,46 @@ class CanvasManager {
             for (const node of this.nodes) {
                 if (node !== this.connectionStartNode && 
                     this.isOverConnectionPoint(node, x, y, true)) {
+                    // Check if the target node already has a parent
+                    if (this.hasParent(node)) {
+                        // Show error message
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'error-message';
+                        errorMessage.textContent = 'Nodes can only have one parent';
+                        errorMessage.style.position = 'fixed';
+                        errorMessage.style.top = '20px';
+                        errorMessage.style.left = '50%';
+                        errorMessage.style.transform = 'translateX(-50%)';
+                        errorMessage.style.backgroundColor = '#ff4444';
+                        errorMessage.style.color = 'white';
+                        errorMessage.style.padding = '10px 20px';
+                        errorMessage.style.borderRadius = '5px';
+                        errorMessage.style.zIndex = '1000';
+                        document.body.appendChild(errorMessage);
+                        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+                        break;
+                    }
+
+                    // Check if the source node is a decorator and already has a child
+                    if (this.connectionStartNode.type === 'decorator' && this.getNodeChildCount(this.connectionStartNode) > 0) {
+                        // Show error message
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'error-message';
+                        errorMessage.textContent = 'Decorator nodes can only have one child';
+                        errorMessage.style.position = 'fixed';
+                        errorMessage.style.top = '20px';
+                        errorMessage.style.left = '50%';
+                        errorMessage.style.transform = 'translateX(-50%)';
+                        errorMessage.style.backgroundColor = '#ff4444';
+                        errorMessage.style.color = 'white';
+                        errorMessage.style.padding = '10px 20px';
+                        errorMessage.style.borderRadius = '5px';
+                        errorMessage.style.zIndex = '1000';
+                        document.body.appendChild(errorMessage);
+                        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+                        break;
+                    }
+
                     // Create the connection
                     this.connections.push({
                         fromNode: this.connectionStartNode,
@@ -783,6 +824,13 @@ class CanvasManager {
 
     private deleteSelectedNodes() {
         if (this.selectedNodes.size > 0) {
+            // Remove custom names from used names
+            this.selectedNodes.forEach(node => {
+                if (node.customName) {
+                    this.usedNames.delete(node.customName);
+                }
+            });
+
             // Remove all connections associated with selected nodes
             this.connections = this.connections.filter(conn => 
                 !this.selectedNodes.has(conn.fromNode) && !this.selectedNodes.has(conn.toNode)
@@ -804,10 +852,44 @@ class CanvasManager {
         }
     }
 
-    // Add method to update node custom name
+    // Update method to update node custom name with validation
     updateNodeCustomName(nodeId: string, customName: string) {
+        // Don't validate empty names - they're allowed
+        if (customName && this.usedNames.has(customName)) {
+            // Show error message
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = 'This name is already in use';
+            errorMessage.style.position = 'fixed';
+            errorMessage.style.top = '20px';
+            errorMessage.style.left = '50%';
+            errorMessage.style.transform = 'translateX(-50%)';
+            errorMessage.style.backgroundColor = '#ff4444';
+            errorMessage.style.color = 'white';
+            errorMessage.style.padding = '10px 20px';
+            errorMessage.style.borderRadius = '5px';
+            errorMessage.style.zIndex = '1000';
+            document.body.appendChild(errorMessage);
+            setTimeout(() => document.body.removeChild(errorMessage), 3000);
+
+            // Reset the input in the right column
+            const node = this.nodes.find(n => n.id === nodeId);
+            if (node) {
+                (window as any).rightColumn.resetCustomNameInput(node.customName || '');
+            }
+            return;
+        }
+
         const node = this.nodes.find(n => n.id === nodeId);
         if (node) {
+            // Remove old name from used names if it exists
+            if (node.customName) {
+                this.usedNames.delete(node.customName);
+            }
+            // Add new name to used names if it's not empty
+            if (customName) {
+                this.usedNames.add(customName);
+            }
             node.customName = customName;
             this.draw();
         }
@@ -884,6 +966,7 @@ class CanvasManager {
             this.connections = [];
             this.selectedNodes.clear();
             this.selectedConnections.clear();
+            this.usedNames.clear();
             (window as any).rightColumn.clear();
 
             // Load nodes first
@@ -902,15 +985,43 @@ class CanvasManager {
                     height: displayNode.height
                 };
                 
+                // Add custom name to used names if it exists
+                if (node.customName) {
+                    this.usedNames.add(node.customName);
+                }
+                
                 this.nodes.push(node);
                 nodeMap.set(node.id, node);
             }
+
+            // Track decorator child counts and node parents to validate connections
+            const decoratorChildCounts = new Map<string, number>();
+            const nodeParents = new Map<string, boolean>();
 
             // Restore connections using the node map
             for (const conn of treeData.logical.connections) {
                 const fromNode = nodeMap.get(conn.fromNodeId);
                 const toNode = nodeMap.get(conn.toNodeId);
                 if (fromNode && toNode) {
+                    // Skip if target node already has a parent
+                    if (nodeParents.has(toNode.id)) {
+                        console.warn(`Skipping invalid connection: node ${toNode.id} already has a parent`);
+                        continue;
+                    }
+
+                    // Skip invalid decorator connections
+                    if (fromNode.type === 'decorator') {
+                        const childCount = decoratorChildCounts.get(fromNode.id) || 0;
+                        if (childCount > 0) {
+                            console.warn(`Skipping invalid connection: decorator node ${fromNode.id} already has a child`);
+                            continue;
+                        }
+                        decoratorChildCounts.set(fromNode.id, childCount + 1);
+                    }
+
+                    // Mark node as having a parent
+                    nodeParents.set(toNode.id, true);
+
                     this.connections.push({
                         fromNode,
                         toNode
@@ -956,6 +1067,7 @@ class CanvasManager {
         this.connections = [];
         this.selectedNodes.clear();
         this.selectedConnections.clear();
+        this.usedNames.clear();
         this.transform = {
             scale: 1,
             offsetX: 0,
@@ -1280,6 +1392,14 @@ class CanvasManager {
         }
 
         return descendants;
+    }
+
+    private getNodeChildCount(node: CanvasNode): number {
+        return this.connections.filter(conn => conn.fromNode === node).length;
+    }
+
+    private hasParent(node: CanvasNode): boolean {
+        return this.connections.some(conn => conn.toNode === node);
     }
 }
 

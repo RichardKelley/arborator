@@ -14,7 +14,7 @@ class RightColumn {
     private customNameInput: HTMLInputElement | null = null;
     private customTypeInput: HTMLInputElement | null = null;
     private configsContainer: HTMLElement | null = null;
-    private nodeConfigs: { [key: string]: any } = {};
+    private nodeConfigs: { [key: string]: { [key: string]: string } } = {};
 
     constructor() {
         const container = document.getElementById('right-column');
@@ -213,6 +213,12 @@ class RightColumn {
         this.customNameInput = null;
         this.customTypeInput = null;
         this.container.innerHTML = '';
+    }
+
+    resetCustomNameInput(value: string) {
+        if (this.customNameInput) {
+            this.customNameInput.value = value;
+        }
     }
 }
 
