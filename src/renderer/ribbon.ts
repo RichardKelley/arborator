@@ -92,6 +92,9 @@ function createFileButtons(content: HTMLElement) {
 function createNodeButtons(content: HTMLElement, nodeTypes: NodeTypes) {
     // Create a group for each category in nodeTypes
     for (const [category, nodes] of Object.entries(nodeTypes)) {
+        // Skip the blackboard node
+        if (category === 'blackboard') continue;
+
         const group = document.createElement('div');
         group.className = 'ribbon-group';
 

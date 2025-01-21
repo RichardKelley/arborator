@@ -389,4 +389,95 @@ body {
 #right-column .config-field.checkbox label {
     order: 2;
     margin: 0;
+}
+
+/* Blackboard Table Styles */
+.blackboard-table-container {
+    margin-top: 20px;
+}
+
+.blackboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+
+.blackboard-table th,
+.blackboard-table td {
+    padding: 0;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.blackboard-table th {
+    background-color: var(--ribbon-bg);
+    font-weight: bold;
+    color: var(--text-color);
+    padding: 8px;
+}
+
+.blackboard-table td:last-child {
+    border-right: none;
+    padding: 4px 8px;
+}
+
+.blackboard-input {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--text-color);
+    box-sizing: border-box;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.blackboard-input:focus {
+    outline: 2px solid var(--ribbon-tab-active-border);
+    outline-offset: -2px;
+    background-color: var(--input-bg);
+    border-radius: 0;
+}
+
+.blackboard-input:hover:not(:focus) {
+    background-color: var(--hover-bg);
+}
+
+.blackboard-delete-button {
+    background-color: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.blackboard-delete-button:hover {
+    background-color: var(--hover-bg);
+}
+
+.blackboard-add-button {
+    width: 100%;
+    padding: 8px;
+    background-color: var(--ribbon-button-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.blackboard-add-button:hover {
+    background-color: var(--ribbon-button-hover-bg);
+}
+
+.blackboard-add-button:active {
+    background-color: var(--ribbon-button-active-bg);
 } 

@@ -11,6 +11,7 @@ interface CanvasNode {
     has_children: boolean;
     configs?: string[];
     configValues?: { [key: string]: { [key: string]: any } };
+    blackboardData?: { [key: string]: any };
     collapsed?: boolean;
 }
 
@@ -578,6 +579,12 @@ class CanvasManager {
                         break;
                     }
 
+                    // Add validation for blackboard nodes
+                    if (node.type === 'blackboard' && this.connectionStartNode.type !== 'root') {
+                        this.showErrorMessage('Blackboard nodes can only connect to root nodes');
+                        break;
+                    }
+
                     // Add validation for root node connections
                     if (this.connectionStartNode.type === 'root') {
                         const existingChildren = this.getNodeChildren(this.connectionStartNode);
@@ -961,7 +968,8 @@ class CanvasManager {
             customType: node.customType,
             has_children: node.has_children,
             configs: node.configs,
-            configValues: node.configValues
+            configValues: node.configValues,
+            blackboardData: node.blackboardData
         }));
 
         // Create a simplified version of connections using node IDs
@@ -1028,7 +1036,8 @@ class CanvasManager {
                     x: displayNode.x,
                     y: displayNode.y,
                     width: displayNode.width,
-                    height: displayNode.height
+                    height: displayNode.height,
+                    blackboardData: logicalNode.blackboardData || {}
                 };
                 
                 // Add custom name to used names if it exists
@@ -1472,6 +1481,14 @@ class CanvasManager {
         return this.connections
             .filter(conn => conn.fromNode === node)
             .map(conn => conn.toNode);
+    }
+
+    updateNodeBlackboardData(nodeId: string, data: { [key: string]: any }) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node) {
+            node.blackboardData = data;
+            this.draw();
+        }
     }
 }
 

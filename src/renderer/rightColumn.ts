@@ -6,6 +6,7 @@ interface NodeConfig {
     customName?: string;
     customType?: string;
     configs?: string[];
+    blackboardData?: { [key: string]: any };
 }
 
 class RightColumn {
@@ -44,6 +45,12 @@ class RightColumn {
         title.className = 'right-column-title';
         title.textContent = (node.name === 'CustomAction' || node.name === 'CustomCondition') ? node.name : node.name;
         this.container.appendChild(title);
+
+        // Handle blackboard nodes differently
+        if (node.type === 'blackboard') {
+            this.displayBlackboardTable(node);
+            return;
+        }
 
         // Custom type input for CustomAction and CustomCondition nodes
         if (node.name === 'CustomAction' || node.name === 'CustomCondition') {
@@ -115,6 +122,122 @@ class RightColumn {
 
             this.container.appendChild(configsContainer);
         }
+    }
+
+    private displayBlackboardTable(node: NodeConfig) {
+        // Create table container
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'blackboard-table-container';
+
+        // Create table
+        const table = document.createElement('table');
+        table.className = 'blackboard-table';
+
+        // Create header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Key', 'Value', ''].forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create table body
+        const tbody = document.createElement('tbody');
+        
+        // Initialize blackboardData if it doesn't exist
+        if (!node.blackboardData) {
+            node.blackboardData = {};
+            (window as any).canvasManager.updateNodeBlackboardData(node.id, node.blackboardData);
+        }
+
+        // Add existing data to table
+        Object.entries(node.blackboardData).forEach(([key, value]) => {
+            const row = this.createTableRow(key, value);
+            tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+
+        // Create "Add Row" button
+        const addButton = document.createElement('button');
+        addButton.className = 'blackboard-add-button';
+        addButton.textContent = 'Add Row';
+        addButton.onclick = () => {
+            const newRow = this.createTableRow('', '');
+            tbody.appendChild(newRow);
+            // Focus the key input of the new row
+            const keyInput = newRow.querySelector('input') as HTMLInputElement;
+            if (keyInput) keyInput.focus();
+        };
+
+        tableContainer.appendChild(table);
+        tableContainer.appendChild(addButton);
+        this.container.appendChild(tableContainer);
+    }
+
+    private createTableRow(key: string, value: any): HTMLTableRowElement {
+        const row = document.createElement('tr');
+
+        // Key cell
+        const keyCell = document.createElement('td');
+        const keyInput = document.createElement('input');
+        keyInput.type = 'text';
+        keyInput.value = key;
+        keyInput.placeholder = 'Enter key';
+        keyInput.className = 'blackboard-input';
+        keyInput.addEventListener('change', () => this.updateBlackboardData());
+        keyInput.addEventListener('input', () => this.updateBlackboardData());
+        keyCell.appendChild(keyInput);
+
+        // Value cell
+        const valueCell = document.createElement('td');
+        const valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.value = value?.toString() || '';
+        valueInput.placeholder = 'Enter value';
+        valueInput.className = 'blackboard-input';
+        valueInput.addEventListener('change', () => this.updateBlackboardData());
+        valueInput.addEventListener('input', () => this.updateBlackboardData());
+        valueCell.appendChild(valueInput);
+
+        // Actions cell
+        const actionsCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'blackboard-delete-button';
+        deleteButton.textContent = '×';
+        deleteButton.onclick = () => {
+            row.remove();
+            this.updateBlackboardData();
+        };
+        actionsCell.appendChild(deleteButton);
+
+        row.appendChild(keyCell);
+        row.appendChild(valueCell);
+        row.appendChild(actionsCell);
+
+        return row;
+    }
+
+    private updateBlackboardData() {
+        if (!this.currentNode) return;
+
+        const table = this.container.querySelector('.blackboard-table');
+        if (!table) return;
+
+        const data: { [key: string]: any } = {};
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const keyInput = row.querySelector('td:first-child input') as HTMLInputElement;
+            const valueInput = row.querySelector('td:nth-child(2) input') as HTMLInputElement;
+            if (keyInput && valueInput && keyInput.value) {
+                data[keyInput.value] = valueInput.value;
+            }
+        });
+
+        this.currentNode.blackboardData = data;
+        (window as any).canvasManager.updateNodeBlackboardData(this.currentNode.id, data);
     }
 
     private createConfigSection(configName: string, configData: any): HTMLElement {
