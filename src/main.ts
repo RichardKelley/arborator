@@ -5,6 +5,7 @@ app.name = 'Arborator'
 
 let mainWindow: BrowserWindow | null = null
 let isDarkMode = false
+let isQuitting = false
 
 // Add IPC handler for initial theme state
 ipcMain.handle('get-theme-state', () => isDarkMode);
@@ -20,7 +21,15 @@ function createMenu() {
       submenu: [
         { role: 'close' },
         { type: 'separator' },
-        { role: 'quit' }
+        { 
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Alt+F4',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.close(); // This will trigger our close handler
+            }
+          }
+        }
       ]
     },
     {
@@ -95,6 +104,47 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
 
   // Handle window close event
+  mainWindow.on('close', async (e) => {
+    if (isQuitting) {
+      return; // Let the window close naturally when quitting
+    }
+
+    e.preventDefault(); // Prevent the window from closing immediately
+    
+    if (!mainWindow) {
+      return;
+    }
+    
+    // Send a message to the renderer to check if there are unsaved changes
+    const hasContent = await mainWindow.webContents.executeJavaScript('window.canvasManager.hasContent()');
+    if (hasContent) {
+      const { response } = await dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['Save', "Don't Save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        title: 'Save Changes?',
+        message: 'Do you want to save the changes to your tree?',
+        detail: 'Your changes will be lost if you don\'t save them.'
+      });
+
+      if (response === 0) { // Save
+        // Tell renderer to save
+        await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
+        isQuitting = true;
+        app.quit();
+      } else if (response === 1) { // Don't Save
+        isQuitting = true;
+        app.quit();
+      }
+      // If response is 2 (Cancel), do nothing and keep the window open
+    } else {
+      isQuitting = true;
+      app.quit();
+    }
+  })
+
+  // Handle window closed event
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -175,3 +225,8 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+// Add before app quit handler
+app.on('before-quit', () => {
+  isQuitting = true;
+});
