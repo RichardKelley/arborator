@@ -125,6 +125,32 @@ class RightColumn {
     }
 
     private displayBlackboardTable(node: NodeConfig) {
+        // Create name input container
+        const customNameContainer = document.createElement('div');
+        customNameContainer.className = 'custom-name-container';
+
+        const customNameLabel = document.createElement('label');
+        customNameLabel.className = 'custom-name-label';
+        customNameLabel.textContent = 'Name';
+        customNameContainer.appendChild(customNameLabel);
+
+        this.customNameInput = document.createElement('input');
+        this.customNameInput.className = 'custom-name-input';
+        this.customNameInput.type = 'text';
+        this.customNameInput.value = node.customName || '';
+        this.customNameInput.placeholder = 'Enter a name for this blackboard';
+        
+        // Add event listener for input changes
+        this.customNameInput.addEventListener('input', (e) => {
+            const target = e.target as HTMLInputElement;
+            if (this.currentNode) {
+                (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+            }
+        });
+        
+        customNameContainer.appendChild(this.customNameInput);
+        this.container.appendChild(customNameContainer);
+
         // Create table container
         const tableContainer = document.createElement('div');
         tableContainer.className = 'blackboard-table-container';
