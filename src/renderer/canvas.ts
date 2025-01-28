@@ -626,8 +626,23 @@ class CanvasManager {
             for (const node of this.nodes) {
                 if (node !== this.connectionStartNode && 
                     this.isOverConnectionPoint(node, x, y, true)) {
+                    // If connecting to a root node that has a child, connect to its child instead
+                    let targetNode = node;
+                    if (node.type === 'root') {
+                        const children = this.getNodeChildren(node);
+                        const regularChild = children.find(child => child.type !== 'blackboard');
+                        if (regularChild) {
+                            // Remove the root node and its connections
+                            this.nodes = this.nodes.filter(n => n !== node);
+                            this.connections = this.connections.filter(conn => 
+                                conn.fromNode !== node && conn.toNode !== node
+                            );
+                            targetNode = regularChild;
+                        }
+                    }
+
                     // Check if the target node already has a parent
-                    if (this.hasParent(node)) {
+                    if (this.hasParent(targetNode)) {
                         this.showErrorMessage('Nodes can only have one parent');
                         break;
                     }
@@ -663,7 +678,7 @@ class CanvasManager {
                     // Create the connection
                     this.connections.push({
                         fromNode: this.connectionStartNode,
-                        toNode: node
+                        toNode: targetNode
                     });
                     break;
                 }
