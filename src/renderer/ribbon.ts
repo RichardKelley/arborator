@@ -368,13 +368,13 @@ function createFileButtons(content: HTMLElement) {
         // Add tooltips for export operations
         switch (btn.name) {
             case 'Export Canvas':
-                button.title = 'Export the entire canvas as an image';
+                button.title = 'Export both trees and blackboards';
                 break;
             case 'Export Trees':
-                button.title = 'Export all trees in the canvas';
+                button.title = 'Export trees, ignoring blackboards';
                 break;
             case 'Export Blackboards':
-                button.title = 'Export all blackboard data';
+                button.title = 'Export blackboards, ignoring trees';
                 break;
         }
         exportGroupContent.appendChild(button);
