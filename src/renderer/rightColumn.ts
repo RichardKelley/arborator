@@ -103,10 +103,24 @@ class RightColumn {
             this.originalCustomName = target.value;
         });
         
+        // Handle enter key press
+        this.customNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && this.currentNode) {
+                e.preventDefault();
+                const target = e.target as HTMLInputElement;
+                // Only update if the value is different from the current node's custom name
+                if (target.value !== (this.currentNode.customName || '')) {
+                    (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                }
+                target.blur(); // Remove focus from input
+            }
+        });
+        
         // Only update if value has changed
         this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
-            if (this.currentNode && target.value !== this.originalCustomName) {
+            // Only update if the value is different from the current node's custom name
+            if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
@@ -154,10 +168,24 @@ class RightColumn {
             this.originalCustomName = target.value;
         });
         
+        // Handle enter key press
+        this.customNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && this.currentNode) {
+                e.preventDefault();
+                const target = e.target as HTMLInputElement;
+                // Only update if the value is different from the current node's custom name
+                if (target.value !== (this.currentNode.customName || '')) {
+                    (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                }
+                target.blur(); // Remove focus from input
+            }
+        });
+        
         // Only update if value has changed
         this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
-            if (this.currentNode && target.value !== this.originalCustomName) {
+            // Only update if the value is different from the current node's custom name
+            if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
