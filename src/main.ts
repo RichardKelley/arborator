@@ -6,6 +6,7 @@ app.name = 'Arborator'
 let mainWindow: BrowserWindow | null = null
 let isDarkMode = false
 let isQuitting = false
+let currentFileName: string | null = null  // Track current file name
 
 // Add IPC handler for initial theme state
 ipcMain.handle('get-theme-state', () => isDarkMode);
@@ -156,13 +157,17 @@ ipcMain.handle('show-save-dialog', async () => {
 
   const { filePath } = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Tree',
-    defaultPath: 'tree.json',
+    defaultPath: currentFileName || 'tree.json',
     filters: [
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ],
     properties: ['createDirectory', 'showOverwriteConfirmation']
   });
+
+  if (filePath) {
+    currentFileName = filePath;  // Update current file name when saving
+  }
 
   return filePath;
 });
@@ -252,6 +257,10 @@ ipcMain.handle('show-open-dialog', async () => {
     ],
     properties: ['openFile']
   });
+
+  if (filePaths[0]) {
+    currentFileName = filePaths[0];  // Update current file name when opening
+  }
 
   return filePaths[0]; // Return the first selected file
 });
