@@ -96,7 +96,7 @@ class RightColumn {
         this.customNameInput.placeholder = 'Enter a name for this node';
         
         // Add event listener for input changes
-        this.customNameInput.addEventListener('input', (e) => {
+        this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
             if (this.currentNode) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
@@ -141,7 +141,7 @@ class RightColumn {
         this.customNameInput.placeholder = 'Enter a name for this blackboard';
         
         // Add event listener for input changes
-        this.customNameInput.addEventListener('input', (e) => {
+        this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
             if (this.currentNode) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
@@ -358,6 +358,14 @@ class RightColumn {
     }
 
     clear() {
+        // Save any pending changes before clearing
+        if (this.currentNode && this.customNameInput) {
+            (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, this.customNameInput.value);
+        }
+        if (this.currentNode && this.customTypeInput) {
+            (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, this.customTypeInput.value);
+        }
+
         this.currentNode = null;
         this.customNameInput = null;
         this.customTypeInput = null;
