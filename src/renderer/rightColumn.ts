@@ -16,6 +16,7 @@ class RightColumn {
     private customTypeInput: HTMLInputElement | null = null;
     private configsContainer: HTMLElement | null = null;
     private nodeConfigs: { [key: string]: { [key: string]: string } } = {};
+    private originalCustomName: string = '';
 
     constructor() {
         const container = document.getElementById('right-column');
@@ -95,10 +96,16 @@ class RightColumn {
         this.customNameInput.value = node.customName || '';
         this.customNameInput.placeholder = 'Enter a name for this node';
         
-        // Add event listener for input changes
+        // Track original value on focus
+        this.customNameInput.addEventListener('focus', (e) => {
+            const target = e.target as HTMLInputElement;
+            this.originalCustomName = target.value;
+        });
+        
+        // Only update if value has changed
         this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
-            if (this.currentNode) {
+            if (this.currentNode && target.value !== this.originalCustomName) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
@@ -140,10 +147,16 @@ class RightColumn {
         this.customNameInput.value = node.customName || '';
         this.customNameInput.placeholder = 'Enter a name for this blackboard';
         
-        // Add event listener for input changes
+        // Track original value on focus
+        this.customNameInput.addEventListener('focus', (e) => {
+            const target = e.target as HTMLInputElement;
+            this.originalCustomName = target.value;
+        });
+        
+        // Only update if value has changed
         this.customNameInput.addEventListener('blur', (e) => {
             const target = e.target as HTMLInputElement;
-            if (this.currentNode) {
+            if (this.currentNode && target.value !== this.originalCustomName) {
                 (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
@@ -359,7 +372,7 @@ class RightColumn {
 
     clear() {
         // Save any pending changes before clearing
-        if (this.currentNode && this.customNameInput) {
+        if (this.currentNode && this.customNameInput && this.customNameInput.value !== this.originalCustomName) {
             (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, this.customNameInput.value);
         }
         if (this.currentNode && this.customTypeInput) {
@@ -369,6 +382,7 @@ class RightColumn {
         this.currentNode = null;
         this.customNameInput = null;
         this.customTypeInput = null;
+        this.originalCustomName = '';
         this.container.innerHTML = '';
     }
 
