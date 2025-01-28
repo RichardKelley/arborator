@@ -102,14 +102,225 @@ function createFileButtons(content: HTMLElement) {
     const exportButtons = [
         { name: 'Export Canvas', action: async () => {
             try {
-                console.log('Export canvas clicked - functionality to be implemented');
+                const canvasManager = (window as any).canvasManager;
+                if (!canvasManager) {
+                    throw new Error('Canvas manager not found');
+                }
+
+                // Find all nodes that have configs
+                const nodesWithConfigs = canvasManager.nodes.filter((node: any) => 
+                    node.configs && node.configs.length > 0 && node.configValues
+                );
+
+                // Create a mapping of configs with unique IDs
+                const configsMap: { [key: string]: any } = {};
+                const nodeConfigMap = new Map<string, { [key: string]: string }>();  // Map node IDs to their config type->id mapping
+
+                nodesWithConfigs.forEach((node: any) => {
+                    if (node.configValues) {
+                        const configMapping: { [key: string]: string } = {};
+                        Object.entries(node.configValues).forEach(([configType, configData]) => {
+                            // Create a unique ID for this config
+                            const configId = Math.random().toString(36).substr(2, 9);
+                            configsMap[configId] = {
+                                type: configType,
+                                values: configData as { [key: string]: any }
+                            };
+                            configMapping[configType] = configId;
+                        });
+                        nodeConfigMap.set(node.id, configMapping);
+                    }
+                });
+
+                // Find all blackboard nodes
+                const blackboardNodes = canvasManager.nodes.filter((node: any) => node.type === 'blackboard');
+                
+                // Create blackboards mapping
+                const blackboardsMap: { [key: string]: any } = {};
+                blackboardNodes.forEach((node: any) => {
+                    const blackboardName = node.customName || 'default';
+                    blackboardsMap[blackboardName] = node.blackboardData || {};
+                });
+
+                // Find all root nodes
+                const rootNodes = canvasManager.nodes.filter((node: any) => node.type === 'root');
+                
+                // Helper function to get children sorted by x-coordinate
+                const getSortedChildren = (node: any) => {
+                    const children = canvasManager.getNodeChildren(node)
+                        .filter((child: any) => child.type !== 'blackboard');  // Exclude blackboard nodes
+                    return children.sort((a: any, b: any) => a.x - b.x);
+                };
+
+                // Helper function to create tree structure recursively
+                const createTreeStructure = (node: any) => {
+                    const nodeData: any = {
+                        type: node.type,
+                        name: node.name
+                    };
+
+                    // Add custom name and type if they exist
+                    if (node.customName) {
+                        nodeData.custom_name = node.customName;
+                    }
+                    if (node.customType) {
+                        nodeData.custom_type = node.customType;
+                    }
+
+                    // If this is a root node, find its associated blackboard
+                    if (node.type === 'root') {
+                        nodeData.blackboard = null;  // Default to null if no blackboard is found
+                        const children = canvasManager.getNodeChildren(node);
+                        const blackboardNode = children.find((child: any) => child.type === 'blackboard');
+                        if (blackboardNode) {
+                            nodeData.blackboard = blackboardNode.customName || 'default';
+                        }
+                    }
+
+                    // Add config references if this node has configs
+                    if (nodeConfigMap.has(node.id)) {
+                        const configMapping = nodeConfigMap.get(node.id);
+                        nodeData.configs = configMapping;
+                    }
+
+                    // Recursively process children in left-to-right order
+                    const children = getSortedChildren(node);
+                    if (children.length > 0) {
+                        nodeData.children = children.map((child: any) => createTreeStructure(child));
+                    }
+
+                    return nodeData;
+                };
+
+                // Create trees object with a tree for each root node
+                const treesMap: { [key: string]: any } = {};
+                rootNodes.forEach((rootNode: any, index: number) => {
+                    const treeName = rootNode.customName || `tree_${index + 1}`;
+                    treesMap[treeName] = createTreeStructure(rootNode);
+                });
+
+                // Create the export data structure
+                const exportData = {
+                    configs: configsMap,
+                    blackboards: blackboardsMap,
+                    trees: treesMap
+                };
+
+                // Convert to JSON string with pretty printing
+                const jsonData = JSON.stringify(exportData, null, 2);
+
+                // Save the file using the electron API
+                const filePath = await window.electronAPI.exportCanvas(jsonData);
+                if (filePath) {
+                    console.log(`Canvas exported successfully to ${filePath}`);
+                }
             } catch (error) {
                 console.error('Failed to export canvas:', error);
             }
         }},
         { name: 'Export Trees', action: async () => {
             try {
-                console.log('Export trees clicked - functionality to be implemented');
+                const canvasManager = (window as any).canvasManager;
+                if (!canvasManager) {
+                    throw new Error('Canvas manager not found');
+                }
+
+                // Find all nodes that have configs
+                const nodesWithConfigs = canvasManager.nodes.filter((node: any) => 
+                    node.configs && node.configs.length > 0 && node.configValues
+                );
+
+                // Create a mapping of configs with unique IDs
+                const configsMap: { [key: string]: any } = {};
+                const nodeConfigMap = new Map<string, { [key: string]: string }>();  // Map node IDs to their config type->id mapping
+
+                nodesWithConfigs.forEach((node: any) => {
+                    if (node.configValues) {
+                        const configMapping: { [key: string]: string } = {};
+                        Object.entries(node.configValues).forEach(([configType, configData]) => {
+                            // Create a unique ID for this config
+                            const configId = Math.random().toString(36).substr(2, 9);
+                            configsMap[configId] = {
+                                type: configType,
+                                values: configData as { [key: string]: any }
+                            };
+                            configMapping[configType] = configId;
+                        });
+                        nodeConfigMap.set(node.id, configMapping);
+                    }
+                });
+
+                // Find all root nodes
+                const rootNodes = canvasManager.nodes.filter((node: any) => node.type === 'root');
+                
+                // Helper function to get children sorted by x-coordinate
+                const getSortedChildren = (node: any) => {
+                    const children = canvasManager.getNodeChildren(node)
+                        .filter((child: any) => child.type !== 'blackboard');  // Exclude blackboard nodes
+                    return children.sort((a: any, b: any) => a.x - b.x);
+                };
+
+                // Helper function to create tree structure recursively
+                const createTreeStructure = (node: any) => {
+                    const nodeData: any = {
+                        type: node.type,
+                        name: node.name
+                    };
+
+                    // Add custom name and type if they exist
+                    if (node.customName) {
+                        nodeData.custom_name = node.customName;
+                    }
+                    if (node.customType) {
+                        nodeData.custom_type = node.customType;
+                    }
+
+                    // If this is a root node, find its associated blackboard
+                    if (node.type === 'root') {
+                        nodeData.blackboard = null;  // Default to null if no blackboard is found
+                        const children = canvasManager.getNodeChildren(node);
+                        const blackboardNode = children.find((child: any) => child.type === 'blackboard');
+                        if (blackboardNode) {
+                            nodeData.blackboard = blackboardNode.customName || 'default';
+                        }
+                    }
+
+                    // Add config references if this node has configs
+                    if (nodeConfigMap.has(node.id)) {
+                        const configMapping = nodeConfigMap.get(node.id);
+                        nodeData.configs = configMapping;
+                    }
+
+                    // Recursively process children in left-to-right order
+                    const children = getSortedChildren(node);
+                    if (children.length > 0) {
+                        nodeData.children = children.map((child: any) => createTreeStructure(child));
+                    }
+
+                    return nodeData;
+                };
+
+                // Create trees object with a tree for each root node
+                const treesMap: { [key: string]: any } = {};
+                rootNodes.forEach((rootNode: any, index: number) => {
+                    const treeName = rootNode.customName || `tree_${index + 1}`;
+                    treesMap[treeName] = createTreeStructure(rootNode);
+                });
+
+                // Create the export data structure
+                const exportData = {
+                    configs: configsMap,
+                    trees: treesMap
+                };
+
+                // Convert to JSON string with pretty printing
+                const jsonData = JSON.stringify(exportData, null, 2);
+
+                // Save the file using the electron API
+                const filePath = await window.electronAPI.exportTrees(jsonData);
+                if (filePath) {
+                    console.log(`Trees exported successfully to ${filePath}`);
+                }
             } catch (error) {
                 console.error('Failed to export trees:', error);
             }

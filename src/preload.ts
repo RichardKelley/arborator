@@ -14,6 +14,8 @@ declare global {
             getThemeState: () => Promise<boolean>;
             setThemeState: (isDark: boolean) => void;
             saveBlackboards: (jsonData: string) => Promise<string | undefined>;
+            exportTrees: (jsonData: string) => Promise<string | undefined>;
+            exportCanvas: (jsonData: string) => Promise<string | undefined>;
         }
     }
 }
@@ -43,17 +45,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     saveTree: async (treeData: any) => {
         try {
-            // Send tree data to main process and get save path from dialog
             const filePath = await ipcRenderer.invoke('show-save-dialog');
             if (!filePath) return undefined;
 
-            // Write the tree data to the selected file
-            await fs.promises.writeFile(
-                filePath,
-                JSON.stringify(treeData, null, 2),
-                'utf8'
-            );
-
+            await fs.promises.writeFile(filePath, JSON.stringify(treeData, null, 2), 'utf8');
             return filePath;
         } catch (error) {
             console.error('Failed to save tree:', error);
@@ -62,7 +57,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     openTree: async () => {
         try {
-            // Get file path from dialog
             const filePath = await ipcRenderer.invoke('show-open-dialog');
             if (!filePath) return undefined;
 
@@ -74,9 +68,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
             throw error;
         }
     },
-    showSaveConfirmation: async () => {
-        return ipcRenderer.invoke('show-save-confirmation');
-    },
+    showSaveConfirmation: () => ipcRenderer.invoke('show-save-confirmation'),
     onThemeChanged: (callback: (isDark: boolean) => void) => {
         ipcRenderer.on('theme-changed', (_, isDark) => callback(isDark));
     },
@@ -84,15 +76,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setThemeState: (isDark: boolean) => ipcRenderer.send('set-theme-state', isDark),
     saveBlackboards: async (jsonData: string) => {
         try {
-            // Get save path from dialog
             const filePath = await ipcRenderer.invoke('show-blackboard-export-dialog');
             if (!filePath) return undefined;
 
-            // Write the blackboards data to the selected file
             await fs.promises.writeFile(filePath, jsonData, 'utf8');
             return filePath;
         } catch (error) {
             console.error('Failed to save blackboards:', error);
+            throw error;
+        }
+    },
+    exportTrees: async (jsonData: string) => {
+        try {
+            const filePath = await ipcRenderer.invoke('show-trees-export-dialog');
+            if (!filePath) return undefined;
+
+            await fs.promises.writeFile(filePath, jsonData, 'utf8');
+            return filePath;
+        } catch (error) {
+            console.error('Failed to export trees:', error);
+            throw error;
+        }
+    },
+    exportCanvas: async (jsonData: string) => {
+        try {
+            const filePath = await ipcRenderer.invoke('show-canvas-export-dialog');
+            if (!filePath) return undefined;
+
+            await fs.promises.writeFile(filePath, jsonData, 'utf8');
+            return filePath;
+        } catch (error) {
+            console.error('Failed to export canvas:', error);
             throw error;
         }
     }

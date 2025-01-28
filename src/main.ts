@@ -184,6 +184,40 @@ ipcMain.handle('show-blackboard-export-dialog', async () => {
   return filePath;
 });
 
+// Handle trees export dialog
+ipcMain.handle('show-trees-export-dialog', async () => {
+  if (!mainWindow) return undefined;
+
+  const { filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Trees',
+    defaultPath: 'trees.json',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return filePath;
+});
+
+// Handle canvas export dialog
+ipcMain.handle('show-canvas-export-dialog', async () => {
+  if (!mainWindow) return undefined;
+
+  const { filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Canvas',
+    defaultPath: 'canvas.json',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return filePath;
+});
+
 // Handle save confirmation dialog
 ipcMain.handle('show-save-confirmation', async () => {
   if (!mainWindow) return 'cancel';
