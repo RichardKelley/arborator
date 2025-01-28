@@ -20,6 +20,12 @@ interface Connection {
     toNode: CanvasNode;
 }
 
+interface SubtreeTemplate {
+    nodes: CanvasNode[];
+    connections: Connection[];
+    rootId: string;
+}
+
 class CanvasManager {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -46,6 +52,7 @@ class CanvasManager {
     private selectionStart = { x: 0, y: 0 };
     private usedNames: Set<string> = new Set();
     private lastEvent: MouseEvent | null = null;
+    private functionTemplates: Map<string, SubtreeTemplate> = new Map();
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 60;
@@ -58,6 +65,9 @@ class CanvasManager {
 
     constructor() {
         this.canvas = document.getElementById('tree-canvas') as HTMLCanvasElement;
+        if (!this.canvas) {
+            throw new Error('Canvas element not found');
+        }
         this.ctx = this.canvas.getContext('2d')!;
         this.dpr = window.devicePixelRatio || 1;
         
@@ -67,6 +77,7 @@ class CanvasManager {
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
         this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
+        this.canvas.addEventListener('contextmenu', this.handleContextMenu.bind(this));
         
         // Add keyboard event listener for deleting connections
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -1561,6 +1572,203 @@ class CanvasManager {
             node.blackboardData = data;
             this.draw();
         }
+    }
+
+    private handleContextMenu(e: MouseEvent) {
+        e.preventDefault();
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const { x, y } = this.screenToCanvas(screenX, screenY);
+        
+        // Check if clicking on a node
+        const clickedNode = this.getNodeAtPosition(x, y);
+        
+        if (!clickedNode) {
+            // If clicking on empty space, clear selection
+            this.selectedNodes.clear();
+            this.selectedConnections.clear();
+            (window as any).rightColumn.clear();
+            this.draw();
+            return;
+        }
+
+        // If clicking on an unselected node, select only that node
+        if (!this.selectedNodes.has(clickedNode)) {
+            this.selectedNodes.clear();
+            this.selectedConnections.clear();
+            this.selectedNodes.add(clickedNode);
+            (window as any).rightColumn.displayNode(clickedNode);
+            this.draw();
+        }
+
+        // Only show context menu if we have a Root node selected
+        const hasSelectedRootNode = Array.from(this.selectedNodes).some(node => node.type === 'root');
+        if (!hasSelectedRootNode) return;
+
+        // Create context menu
+        const contextMenu = document.createElement('div');
+        contextMenu.className = 'context-menu';
+        contextMenu.style.position = 'fixed';
+        contextMenu.style.left = `${e.clientX}px`;
+        contextMenu.style.top = `${e.clientY}px`;
+        contextMenu.style.backgroundColor = 'var(--bg-color)';
+        contextMenu.style.border = '1px solid var(--border-color)';
+        contextMenu.style.padding = '4px 0';
+        contextMenu.style.borderRadius = '4px';
+        contextMenu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        contextMenu.style.zIndex = '1000';
+
+        // Create "Create Function" option
+        const createFunctionOption = document.createElement('div');
+        createFunctionOption.textContent = 'Create Function';
+        createFunctionOption.style.padding = '4px 12px';
+        createFunctionOption.style.cursor = 'pointer';
+        createFunctionOption.style.color = 'var(--text-color)';
+        createFunctionOption.style.fontSize = '14px';
+
+        createFunctionOption.addEventListener('mouseover', () => {
+            createFunctionOption.style.backgroundColor = 'var(--hover-bg)';
+        });
+
+        createFunctionOption.addEventListener('mouseout', () => {
+            createFunctionOption.style.backgroundColor = '';
+        });
+
+        createFunctionOption.onclick = () => {
+            // Get the first selected root node
+            const rootNode = Array.from(this.selectedNodes).find(node => node.type === 'root');
+            if (rootNode) {
+                if (!rootNode.customName) {
+                    this.showErrorMessage('Please name the root node before creating a function');
+                } else {
+                    // Record the template and add function button to the functions tab
+                    const templateId = this.createFunctionTemplate(rootNode);
+                    (window as any).ribbon.addFunctionButton(rootNode.customName, templateId);
+                }
+            }
+            document.body.removeChild(contextMenu);
+        };
+
+        contextMenu.appendChild(createFunctionOption);
+        document.body.appendChild(contextMenu);
+
+        // Remove context menu when clicking outside
+        const removeContextMenu = (e: MouseEvent) => {
+            if (!contextMenu.contains(e.target as Node)) {
+                document.body.removeChild(contextMenu);
+                document.removeEventListener('click', removeContextMenu);
+            }
+        };
+        document.addEventListener('click', removeContextMenu);
+    }
+
+    private recordSubtree(rootNode: CanvasNode): SubtreeTemplate {
+        const nodes: CanvasNode[] = [];
+        const connections: Connection[] = [];
+        const visited = new Set<string>();
+
+        // Helper function to recursively collect nodes and connections
+        const traverse = (node: CanvasNode) => {
+            if (visited.has(node.id)) return;
+            visited.add(node.id);
+
+            // Clone the node
+            const nodeCopy = { ...node };
+            nodes.push(nodeCopy);
+
+            // Get all children and their connections
+            const children = this.getNodeChildren(node);
+            children.forEach(child => {
+                if (child.type !== 'blackboard') {  // Skip blackboard nodes
+                    connections.push({ fromNode: node, toNode: child });
+                    traverse(child);
+                }
+            });
+        };
+
+        traverse(rootNode);
+
+        return {
+            nodes,
+            connections,
+            rootId: rootNode.id
+        };
+    }
+
+    private cloneSubtree(template: SubtreeTemplate): CanvasNode {
+        // Create a map to store new nodes
+        const idToNodeMap = new Map<string, CanvasNode>();
+        
+        // Helper function to create a new node
+        const createNode = (nodeTemplate: CanvasNode) => {
+            const newId = Math.random().toString(36).substr(2, 9);
+            
+            // Create new node with same properties but new ID
+            const newNode: CanvasNode = {
+                ...nodeTemplate,
+                id: newId,
+                // Leave custom names blank in the clone
+                customName: undefined,
+                x: nodeTemplate.x + 50, // Offset position slightly
+                y: nodeTemplate.y + 50,
+                configValues: JSON.parse(JSON.stringify(nodeTemplate.configValues || {}))
+            };
+            
+            idToNodeMap.set(nodeTemplate.id, newNode);
+            this.nodes.push(newNode);
+            return newNode;
+        };
+        
+        // Create all nodes first
+        template.nodes.forEach(createNode);
+        
+        // Then create all connections with updated IDs
+        template.connections.forEach(conn => {
+            const fromNode = idToNodeMap.get(conn.fromNode.id);
+            const toNode = idToNodeMap.get(conn.toNode.id);
+            if (fromNode && toNode) {
+                this.connections.push({
+                    fromNode,
+                    toNode
+                });
+            }
+        });
+        
+        // Return the root node (first node in template)
+        const rootNode = idToNodeMap.get(template.nodes[0].id);
+        if (!rootNode) {
+            throw new Error('Failed to create root node in cloned subtree');
+        }
+        return rootNode;
+    }
+
+    // Method to create a function template
+    createFunctionTemplate(rootNode: CanvasNode): string {
+        const template = this.recordSubtree(rootNode);
+        this.functionTemplates.set(rootNode.id, template);
+        return rootNode.id;
+    }
+
+    // Method to instantiate a function template
+    instantiateFunction(templateId: string) {
+        const template = this.functionTemplates.get(templateId);
+        if (!template) {
+            this.showErrorMessage('Function template not found');
+            return;
+        }
+
+        const newRootNode = this.cloneSubtree(template);
+        this.selectedNodes.clear();
+        this.selectedNodes.add(newRootNode);
+        (window as any).rightColumn.displayNode(newRootNode);
+        this.draw();
+    }
+
+    // Method to delete a function template
+    deleteFunctionTemplate(templateId: string) {
+        this.functionTemplates.delete(templateId);
     }
 }
 

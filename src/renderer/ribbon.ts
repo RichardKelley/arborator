@@ -8,7 +8,48 @@ interface NodeTypes {
     [key: string]: NodeType[] | NodeType;
 }
 
-type TabType = 'nodes' | 'file' | 'blackboard';
+type TabType = 'nodes' | 'file' | 'blackboard' | 'functions';
+
+// Keep track of function buttons
+const functionButtons: { name: string, nodeId: string }[] = [];
+
+function addFunctionButton(name: string, nodeId: string) {
+    // Check if a button with this name or nodeId already exists
+    if (functionButtons.some(btn => btn.name === name || btn.nodeId === nodeId)) {
+        // Show error message
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = 'A function already exists for this tree';
+        errorMessage.style.position = 'fixed';
+        errorMessage.style.top = '20px';
+        errorMessage.style.left = '50%';
+        errorMessage.style.transform = 'translateX(-50%)';
+        errorMessage.style.backgroundColor = '#ff4444';
+        errorMessage.style.color = 'white';
+        errorMessage.style.padding = '10px 20px';
+        errorMessage.style.borderRadius = '5px';
+        errorMessage.style.zIndex = '1000';
+        document.body.appendChild(errorMessage);
+        setTimeout(() => document.body.removeChild(errorMessage), 3000);
+        return;
+    }
+
+    // Add to our list of function buttons
+    functionButtons.push({ name, nodeId });
+    
+    // If we're currently on the functions tab, refresh it
+    const activeTab = document.querySelector('.ribbon-tab.active') as HTMLDivElement;
+    if (activeTab?.dataset.tab === 'functions') {
+        const ribbon = document.querySelector('.ribbon');
+        if (ribbon) {
+            const content = document.createElement('div');
+            content.className = 'ribbon-content';
+            createFunctionsButtons(content);
+            ribbon.innerHTML = '';
+            ribbon.appendChild(content);
+        }
+    }
+}
 
 function createFileButtons(content: HTMLElement) {
     const group = document.createElement('div');
@@ -575,6 +616,160 @@ function createBlackboardButtons(content: HTMLElement) {
     content.appendChild(group);
 }
 
+function createFunctionsButtons(content: HTMLElement) {
+    const group = document.createElement('div');
+    group.className = 'ribbon-group';
+
+    const label = document.createElement('div');
+    label.className = 'ribbon-group-label';
+    label.textContent = 'Functions';
+    
+    const groupContent = document.createElement('div');
+    groupContent.className = 'ribbon-group-content';
+
+    // Add a button for each function
+    functionButtons.forEach(({ name, nodeId }) => {
+        // Create button container for button and delete 'x'
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'ribbon-button-container';
+        buttonContainer.style.position = 'relative';
+        buttonContainer.style.display = 'inline-block';
+        buttonContainer.style.marginRight = '2px';  // Small spacing between buttons
+
+        // Create main function button
+        const button = document.createElement('button');
+        button.className = 'ribbon-button';
+        button.style.paddingRight = '36px';  // 20px spacing + 16px for 'x'
+        button.style.paddingLeft = '8px';    // Less padding on the left
+        button.style.paddingTop = '4px';     // Reduced vertical padding
+        button.style.paddingBottom = '4px';  // Reduced vertical padding
+        button.textContent = name;
+        button.onclick = () => {
+            const canvasManager = (window as any).canvasManager;
+            if (canvasManager) {
+                canvasManager.instantiateFunction(nodeId);
+            }
+        };
+
+        // Create delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'ribbon-button-delete';
+        deleteButton.textContent = '×';
+        deleteButton.style.position = 'absolute';
+        deleteButton.style.right = '4px';    // Slightly closer to the edge
+        deleteButton.style.top = '50%';
+        deleteButton.style.transform = 'translateY(-50%)';
+        deleteButton.style.width = '16px';    // Back to original size
+        deleteButton.style.height = '16px';   // Back to original size
+        deleteButton.style.lineHeight = '16px'; // Match height
+        deleteButton.style.textAlign = 'center';
+        deleteButton.style.cursor = 'pointer';
+        deleteButton.style.borderRadius = '50%';
+        deleteButton.style.backgroundColor = 'var(--ribbon-button-bg)';
+        deleteButton.style.color = 'var(--text-color)';
+        deleteButton.style.fontSize = '14px';  // Back to original size
+        deleteButton.style.fontWeight = 'bold';
+
+        // Add hover effect
+        deleteButton.addEventListener('mouseover', () => {
+            deleteButton.style.backgroundColor = 'var(--ribbon-button-hover-bg)';
+        });
+        deleteButton.addEventListener('mouseout', () => {
+            deleteButton.style.backgroundColor = 'var(--ribbon-button-bg)';
+        });
+
+        // Handle delete click
+        deleteButton.onclick = (e) => {
+            e.stopPropagation(); // Prevent triggering the main button click
+
+            // Create confirmation modal
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.right = '0';
+            overlay.style.bottom = '0';
+            overlay.style.backgroundColor = 'var(--modal-overlay-bg)';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.zIndex = '1000';
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.backgroundColor = 'var(--bg-color)';
+            modal.style.padding = '20px';
+            modal.style.borderRadius = '4px';
+            modal.style.minWidth = '300px';
+
+            const title = document.createElement('h3');
+            title.style.margin = '0 0 15px 0';
+            title.textContent = 'Delete Function';
+
+            const message = document.createElement('p');
+            message.style.margin = '0 0 20px 0';
+            message.textContent = `Are you sure you want to delete the function "${name}"?`;
+
+            const buttons = document.createElement('div');
+            buttons.style.display = 'flex';
+            buttons.style.justifyContent = 'flex-end';
+            buttons.style.gap = '10px';
+
+            const noButton = document.createElement('button');
+            noButton.className = 'modal-button modal-button-secondary';
+            noButton.textContent = 'No';
+            noButton.onclick = () => document.body.removeChild(overlay);
+
+            const yesButton = document.createElement('button');
+            yesButton.className = 'modal-button modal-button-primary';
+            yesButton.textContent = 'Yes';
+            yesButton.onclick = () => {
+                // Remove the function from our list
+                const index = functionButtons.findIndex(btn => btn.nodeId === nodeId);
+                if (index !== -1) {
+                    functionButtons.splice(index, 1);
+                }
+
+                // Remove the template from canvas manager
+                const canvasManager = (window as any).canvasManager;
+                if (canvasManager) {
+                    canvasManager.deleteFunctionTemplate(nodeId);
+                }
+
+                // Refresh the functions tab
+                const content = document.createElement('div');
+                content.className = 'ribbon-content';
+                createFunctionsButtons(content);
+                const ribbon = document.querySelector('.ribbon');
+                if (ribbon) {
+                    ribbon.innerHTML = '';
+                    ribbon.appendChild(content);
+                }
+
+                document.body.removeChild(overlay);
+            };
+
+            buttons.appendChild(noButton);
+            buttons.appendChild(yesButton);
+
+            modal.appendChild(title);
+            modal.appendChild(message);
+            modal.appendChild(buttons);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+        };
+
+        buttonContainer.appendChild(button);
+        buttonContainer.appendChild(deleteButton);
+        groupContent.appendChild(buttonContainer);
+    });
+
+    group.appendChild(label);
+    group.appendChild(groupContent);
+    content.appendChild(group);
+}
+
 function switchTab(tab: TabType, nodeTypes: NodeTypes) {
     const ribbon = document.querySelector('.ribbon');
     if (!ribbon) return;
@@ -601,6 +796,9 @@ function switchTab(tab: TabType, nodeTypes: NodeTypes) {
         case 'blackboard':
             createBlackboardButtons(content);
             break;
+        case 'functions':
+            createFunctionsButtons(content);
+            break;
     }
 
     ribbon.appendChild(content);
@@ -618,7 +816,7 @@ async function initializeRibbon() {
         const tabs = document.createElement('div');
         tabs.className = 'ribbon-tabs';
         
-        const tabNames: TabType[] = ['file', 'nodes', 'blackboard'];
+        const tabNames: TabType[] = ['file', 'nodes', 'blackboard', 'functions'];
         tabNames.forEach(tabName => {
             const tab = document.createElement('div');
             tab.className = 'ribbon-tab';
@@ -654,4 +852,7 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeRibbon);
 } else {
     initializeRibbon();
-} 
+}
+
+// Export the addFunctionButton function globally
+(window as any).ribbon = { addFunctionButton }; 
