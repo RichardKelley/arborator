@@ -130,10 +130,16 @@ function createWindow() {
       });
 
       if (response === 0) { // Save
-        // Tell renderer to save
-        await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
-        isQuitting = true;
-        app.quit();
+        try {
+          // Tell renderer to save and wait for the result
+          const filePath = await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
+          if (filePath) { // Only quit if save was successful (not cancelled)
+            isQuitting = true;
+            app.quit();
+          }
+        } catch (error) {
+          console.error('Error during save:', error);
+        }
       } else if (response === 1) { // Don't Save
         isQuitting = true;
         app.quit();

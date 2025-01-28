@@ -1064,7 +1064,7 @@ class CanvasManager {
     async save() {
         try {
             const treeData = this.serializeTree();
-            await window.electronAPI.saveTree(treeData);
+            return await window.electronAPI.saveTree(treeData);
         } catch (error) {
             console.error('Failed to save tree:', error);
             throw error;
