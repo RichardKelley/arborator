@@ -167,6 +167,23 @@ ipcMain.handle('show-save-dialog', async () => {
   return filePath;
 });
 
+// Handle blackboard export dialog
+ipcMain.handle('show-blackboard-export-dialog', async () => {
+  if (!mainWindow) return undefined;
+
+  const { filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Blackboards',
+    defaultPath: 'blackboards.json',
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return filePath;
+});
+
 // Handle save confirmation dialog
 ipcMain.handle('show-save-confirmation', async () => {
   if (!mainWindow) return 'cancel';

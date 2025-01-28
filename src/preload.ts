@@ -13,6 +13,7 @@ declare global {
             onThemeChanged: (callback: (isDark: boolean) => void) => void;
             getThemeState: () => Promise<boolean>;
             setThemeState: (isDark: boolean) => void;
+            saveBlackboards: (jsonData: string) => Promise<string | undefined>;
         }
     }
 }
@@ -80,7 +81,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('theme-changed', (_, isDark) => callback(isDark));
     },
     getThemeState: () => ipcRenderer.invoke('get-theme-state'),
-    setThemeState: (isDark: boolean) => ipcRenderer.send('set-theme-state', isDark)
+    setThemeState: (isDark: boolean) => ipcRenderer.send('set-theme-state', isDark),
+    saveBlackboards: async (jsonData: string) => {
+        try {
+            // Get save path from dialog
+            const filePath = await ipcRenderer.invoke('show-blackboard-export-dialog');
+            if (!filePath) return undefined;
+
+            // Write the blackboards data to the selected file
+            await fs.promises.writeFile(filePath, jsonData, 'utf8');
+            return filePath;
+        } catch (error) {
+            console.error('Failed to save blackboards:', error);
+            throw error;
+        }
+    }
 });
 
 window.addEventListener('DOMContentLoaded', () => {

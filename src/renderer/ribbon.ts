@@ -87,6 +87,91 @@ function createFileButtons(content: HTMLElement) {
     group.appendChild(label);
     group.appendChild(groupContent);
     content.appendChild(group);
+
+    // Create export group
+    const exportGroup = document.createElement('div');
+    exportGroup.className = 'ribbon-group';
+
+    const exportLabel = document.createElement('div');
+    exportLabel.className = 'ribbon-group-label';
+    exportLabel.textContent = 'Export';
+    
+    const exportGroupContent = document.createElement('div');
+    exportGroupContent.className = 'ribbon-group-content';
+
+    const exportButtons = [
+        { name: 'Export Canvas', action: async () => {
+            try {
+                console.log('Export canvas clicked - functionality to be implemented');
+            } catch (error) {
+                console.error('Failed to export canvas:', error);
+            }
+        }},
+        { name: 'Export Trees', action: async () => {
+            try {
+                console.log('Export trees clicked - functionality to be implemented');
+            } catch (error) {
+                console.error('Failed to export trees:', error);
+            }
+        }},
+        { name: 'Export Blackboards', action: async () => {
+            try {
+                const canvasManager = (window as any).canvasManager;
+                if (!canvasManager) {
+                    throw new Error('Canvas manager not found');
+                }
+
+                // Find all blackboard nodes
+                const blackboardNodes = canvasManager.nodes.filter((node: any) => node.type === 'blackboard');
+                
+                if (blackboardNodes.length === 0) {
+                    console.log('No blackboards found to export');
+                    return;
+                }
+
+                // Format the blackboards data
+                const blackboardsData = blackboardNodes.map((node: any) => ({
+                    name: node.customName || 'default',
+                    kv: node.blackboardData || {}
+                }));
+
+                // Convert to JSON string with pretty printing
+                const jsonData = JSON.stringify(blackboardsData, null, 2);
+
+                // Save the file using the electron API
+                const filePath = await window.electronAPI.saveBlackboards(jsonData);
+                if (filePath) {
+                    console.log(`Blackboards exported successfully to ${filePath}`);
+                }
+            } catch (error) {
+                console.error('Failed to export blackboards:', error);
+            }
+        }}
+    ];
+
+    exportButtons.forEach(btn => {
+        const button = document.createElement('button');
+        button.className = 'ribbon-button';
+        button.textContent = btn.name;
+        button.onclick = btn.action;
+        // Add tooltips for export operations
+        switch (btn.name) {
+            case 'Export Canvas':
+                button.title = 'Export the entire canvas as an image';
+                break;
+            case 'Export Trees':
+                button.title = 'Export all trees in the canvas';
+                break;
+            case 'Export Blackboards':
+                button.title = 'Export all blackboard data';
+                break;
+        }
+        exportGroupContent.appendChild(button);
+    });
+
+    exportGroup.appendChild(exportLabel);
+    exportGroup.appendChild(exportGroupContent);
+    content.appendChild(exportGroup);
 }
 
 function createNodeButtons(content: HTMLElement, nodeTypes: NodeTypes) {
