@@ -44,6 +44,7 @@ class CanvasManager {
     private isRectangleSelecting = false;
     private selectionStart = { x: 0, y: 0 };
     private usedNames: Set<string> = new Set();
+    private lastEvent: MouseEvent | null = null;
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 60;
@@ -549,6 +550,8 @@ class CanvasManager {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const { x, y } = this.screenToCanvas(screenX, screenY);
+        
+        this.lastEvent = e;
 
         if (this.isRectangleSelecting) {
             this.currentMousePos = { x, y };
@@ -1347,6 +1350,12 @@ class CanvasManager {
         const right = Math.max(this.selectionStart.x, this.currentMousePos.x);
         const top = Math.min(this.selectionStart.y, this.currentMousePos.y);
         const bottom = Math.max(this.selectionStart.y, this.currentMousePos.y);
+
+        // Clear existing selection if not in multi-select mode
+        if (!(this.lastEvent && (this.lastEvent.ctrlKey || this.lastEvent.metaKey))) {
+            this.selectedNodes.clear();
+            this.selectedConnections.clear();
+        }
 
         // Check each node for intersection with selection rectangle
         for (const node of this.nodes) {
