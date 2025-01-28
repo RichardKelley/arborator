@@ -39,6 +39,7 @@ class RightColumn {
         if (!node) return;
         
         this.currentNode = node;
+        this.originalCustomName = node.customName || '';
         this.container.innerHTML = '';
 
         // Title (node type)
@@ -371,11 +372,17 @@ class RightColumn {
     }
 
     clear() {
-        // Save any pending changes before clearing
-        if (this.currentNode && this.customNameInput && this.customNameInput.value !== this.originalCustomName) {
+        // Only save changes if there was an actual change to the custom name
+        if (this.currentNode && 
+            this.customNameInput && 
+            this.customNameInput.value !== this.originalCustomName) {
             (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, this.customNameInput.value);
         }
-        if (this.currentNode && this.customTypeInput) {
+        
+        // Only update custom type if it exists and has changed
+        if (this.currentNode && 
+            this.customTypeInput && 
+            this.customTypeInput.value !== this.currentNode.customType) {
             (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, this.customTypeInput.value);
         }
 
