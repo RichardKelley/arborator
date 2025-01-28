@@ -29,6 +29,7 @@ class CanvasManager {
     private isPanning = false;
     private isDrawingConnection = false;
     private connectionStartNode: CanvasNode | null = null;
+    private potentialConnectionNode: CanvasNode | null = null;
     private currentMousePos = { x: 0, y: 0 };
     private draggedNode: CanvasNode | null = null;
     private selectedNodes: Set<CanvasNode> = new Set();
@@ -343,11 +344,21 @@ class CanvasManager {
 
         // Draw connection point circle at the top center
         this.ctx.beginPath();
-        this.ctx.arc(node.x + node.width / 2, node.y, connectionPointRadius, 0, Math.PI * 2);
-        this.ctx.fillStyle = this.selectedNodes.has(node) ? nodeConnectionSelected : nodeConnectionBg;
+        // Highlight the connection point if this is the potential connection target
+        const isHighlighted = this.isDrawingConnection && 
+                            this.potentialConnectionNode === node && 
+                            node !== this.connectionStartNode;
+        
+        // Make the circle 50% larger when highlighted
+        const displayRadius = isHighlighted ? connectionPointRadius * 1.5 : connectionPointRadius;
+        this.ctx.arc(node.x + node.width / 2, node.y, displayRadius, 0, Math.PI * 2);
+        
+        // Only change the fill color for highlighting, keep border color consistent
+        this.ctx.fillStyle = isHighlighted ? nodeSelected : 
+                            this.selectedNodes.has(node) ? nodeConnectionSelected : nodeConnectionBg;
         this.ctx.fill();
         this.ctx.strokeStyle = this.selectedNodes.has(node) ? nodeSelected : nodeBorder;
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2;  // Keep line width consistent
         this.ctx.stroke();
 
         // Draw bottom connection point circle if has_children is true
@@ -550,39 +561,36 @@ class CanvasManager {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const { x, y } = this.screenToCanvas(screenX, screenY);
-        
-        this.lastEvent = e;
+        this.currentMousePos = { x, y };
 
-        if (this.isRectangleSelecting) {
-            this.currentMousePos = { x, y };
-            this.updateRectangleSelection();
-            this.draw();
-            return;
+        // Update potential connection point when drawing a connection
+        if (this.isDrawingConnection && this.connectionStartNode) {
+            let foundPotentialConnection = false;
+            for (const node of this.nodes) {
+                if (node !== this.connectionStartNode && 
+                    this.isOverConnectionPoint(node, x, y, true)) {
+                    this.potentialConnectionNode = node;
+                    foundPotentialConnection = true;
+                    break;
+                }
+            }
+            if (!foundPotentialConnection) {
+                this.potentialConnectionNode = null;
+            }
         }
 
-        if (this.isPanning) {
-            this.transform.offsetX = screenX - this.dragOffset.x;
-            this.transform.offsetY = screenY - this.dragOffset.y;
-            this.draw();
-            return;
-        }
-
-        if (this.isDrawingConnection) {
-            this.currentMousePos = { x, y };
-            this.draw();
-            return;
-        }
-
+        // Handle node dragging
         if (this.isDragging && this.draggedNode) {
-            // Calculate the movement delta
-            const dx = x - this.dragOffset.x - this.draggedNode.x;
-            const dy = y - this.dragOffset.y - this.draggedNode.y;
-
-            // If the dragged node is selected, move all selected nodes and their descendants
+            const newX = x - this.dragOffset.x;
+            const newY = y - this.dragOffset.y;
+            
+            // Move all selected nodes and their descendants if the dragged node is selected
             if (this.selectedNodes.has(this.draggedNode)) {
-                const nodesToMove = new Set<CanvasNode>();
+                const deltaX = newX - this.draggedNode.x;
+                const deltaY = newY - this.draggedNode.y;
                 
-                // Add all selected nodes and their descendants
+                // Get all nodes that need to be moved (selected nodes and their descendants)
+                const nodesToMove = new Set<CanvasNode>();
                 this.selectedNodes.forEach(node => {
                     nodesToMove.add(node);
                     if (node.has_children) {
@@ -592,24 +600,38 @@ class CanvasManager {
 
                 // Move all nodes in the set
                 nodesToMove.forEach(node => {
-                    node.x += dx;
-                    node.y += dy;
+                    node.x += deltaX;
+                    node.y += deltaY;
                 });
             } else {
-                // If dragging an unselected node, move it and its descendants
-                this.draggedNode.x = x - this.dragOffset.x;
-                this.draggedNode.y = y - this.dragOffset.y;
+                // Move just the dragged node and its descendants
+                const deltaX = newX - this.draggedNode.x;
+                const deltaY = newY - this.draggedNode.y;
+                
+                this.draggedNode.x = newX;
+                this.draggedNode.y = newY;
                 
                 if (this.draggedNode.has_children) {
-                    const descendants = this.getDescendantNodes(this.draggedNode);
-                    descendants.forEach(node => {
-                        node.x += dx;
-                        node.y += dy;
+                    this.getDescendantNodes(this.draggedNode).forEach(descendant => {
+                        descendant.x += deltaX;
+                        descendant.y += deltaY;
                     });
                 }
             }
-            this.draw();
         }
+        
+        // Handle panning
+        if (this.isPanning) {
+            this.transform.offsetX = screenX - this.dragOffset.x;
+            this.transform.offsetY = screenY - this.dragOffset.y;
+        }
+        
+        // Handle rectangle selection
+        if (this.isRectangleSelecting) {
+            this.updateRectangleSelection();
+        }
+
+        this.draw();
     }
 
     private handleMouseUp(e: MouseEvent) {
@@ -644,40 +666,6 @@ class CanvasManager {
                         }
                     }
 
-                    // Check if the target node already has a parent
-                    if (this.hasParent(targetNode)) {
-                        this.showErrorMessage('Nodes can only have one parent');
-                        break;
-                    }
-
-                    // Check if the source node is a decorator and already has a child
-                    if (this.connectionStartNode.type === 'decorator' && this.getNodeChildCount(this.connectionStartNode) > 0) {
-                        this.showErrorMessage('Decorator nodes can only have one child');
-                        break;
-                    }
-
-                    // Add validation for blackboard nodes
-                    if (node.type === 'blackboard' && this.connectionStartNode.type !== 'root') {
-                        this.showErrorMessage('Blackboard nodes can only connect to root nodes');
-                        break;
-                    }
-
-                    // Add validation for root node connections
-                    if (this.connectionStartNode.type === 'root') {
-                        const existingChildren = this.getNodeChildren(this.connectionStartNode);
-                        const hasBlackboard = existingChildren.some(child => child.type === 'blackboard');
-                        const hasRegularNode = existingChildren.some(child => child.type !== 'blackboard');
-
-                        if (node.type === 'blackboard' && hasBlackboard) {
-                            this.showErrorMessage('Root node can only have one blackboard node');
-                            break;
-                        }
-                        if (node.type !== 'blackboard' && hasRegularNode) {
-                            this.showErrorMessage('Root node can only have one regular node');
-                            break;
-                        }
-                    }
-
                     // Create the connection
                     this.connections.push({
                         fromNode: this.connectionStartNode,
@@ -692,6 +680,7 @@ class CanvasManager {
         this.isPanning = false;
         this.isDrawingConnection = false;
         this.connectionStartNode = null;
+        this.potentialConnectionNode = null;
         this.draggedNode = null;
         this.draw();
     }
