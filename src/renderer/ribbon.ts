@@ -31,7 +31,16 @@ function createFileButtons(content: HTMLElement) {
         }},
         { name: 'Open', action: async () => {
             try {
-                const success = await (window as any).canvasManager.open();
+                const canvasManager = (window as any).canvasManager;
+                if (canvasManager.hasContent()) {
+                    const shouldSave = await window.electronAPI.showSaveConfirmation();
+                    if (shouldSave === 'save') {
+                        await canvasManager.save();
+                    } else if (shouldSave === 'cancel') {
+                        return;
+                    }
+                }
+                const success = await canvasManager.open();
                 if (success) {
                     console.log('Tree loaded successfully');
                 }
