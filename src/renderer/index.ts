@@ -51,4 +51,24 @@ console.log('Setting up DOMContentLoaded listener');
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM Content Loaded');
     initializeTheme().catch(err => console.error('Failed to initialize theme:', err));
+
+    // Set up select all handler
+    (window as any).electronAPI.onSelectAll(() => {
+        if ((window as any).canvasManager) {
+            (window as any).canvasManager.selectAll();
+        }
+    });
+
+    // Set up delete handler
+    (window as any).electronAPI.onDelete(() => {
+        if ((window as any).canvasManager) {
+            const numSelectedNodes = (window as any).canvasManager.selectedNodes.size;
+            const numSelectedConnections = (window as any).canvasManager.selectedConnections.size;
+            
+            if (numSelectedNodes > 0 || numSelectedConnections > 0) {
+                (window as any).canvasManager.deleteSelectedNodes();
+                (window as any).canvasManager.deleteSelectedConnections();
+            }
+        }
+    });
 });

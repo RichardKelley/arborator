@@ -1770,6 +1770,29 @@ class CanvasManager {
     deleteFunctionTemplate(templateId: string) {
         this.functionTemplates.delete(templateId);
     }
+
+    // Method to select all nodes and connections
+    selectAll() {
+        // Clear current selection
+        this.selectedNodes.clear();
+        this.selectedConnections.clear();
+
+        // Select all visible nodes
+        this.nodes.forEach(node => {
+            if (!this.isNodeHidden(node)) {
+                this.selectedNodes.add(node);
+            }
+        });
+
+        // Select all visible connections
+        this.connections.forEach(conn => {
+            if (!this.isNodeHidden(conn.fromNode) && !this.isNodeHidden(conn.toNode)) {
+                this.selectedConnections.add(conn);
+            }
+        });
+
+        this.draw();
+    }
 }
 
 // Create and export the singleton instance

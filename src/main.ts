@@ -20,7 +20,97 @@ function createMenu() {
     {
       label: 'File',
       submenu: [
-        { role: 'close' },
+        {
+          label: 'New',
+          accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
+          click: async () => {
+            if (!mainWindow) return;
+            await mainWindow.webContents.executeJavaScript('window.canvasManager.handleNew()');
+            mainWindow.setTitle('Arborator'); // Reset title to default
+          }
+        },
+        {
+          label: 'Open',
+          accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
+          click: async () => {
+            if (!mainWindow) return;
+            
+            // Check for unsaved changes first
+            const hasContent = await mainWindow.webContents.executeJavaScript('window.canvasManager.hasContent()');
+            if (hasContent) {
+              const { response } = await dialog.showMessageBox(mainWindow, {
+                type: 'question',
+                buttons: ['Save', "Don't Save", 'Cancel'],
+                defaultId: 0,
+                cancelId: 2,
+                title: 'Save Changes?',
+                message: 'Do you want to save the changes to your tree?',
+                detail: 'Your changes will be lost if you don\'t save them.'
+              });
+
+              if (response === 0) { // Save
+                try {
+                  // Tell renderer to save and wait for the result
+                  const filePath = await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
+                  if (!filePath) return; // User cancelled save
+                } catch (error) {
+                  console.error('Error during save:', error);
+                  return;
+                }
+              } else if (response === 2) { // Cancel
+                return;
+              }
+            }
+
+            // Proceed with open
+            try {
+              const success = await mainWindow.webContents.executeJavaScript('window.canvasManager.open()');
+              if (success) {
+                // Update window title with filename
+                const filePath = await mainWindow.webContents.executeJavaScript('window.currentFileName');
+                if (filePath) {
+                  mainWindow.setTitle(`Arborator - ${path.basename(filePath)}`);
+                }
+              }
+            } catch (error) {
+              console.error('Error during open:', error);
+            }
+          }
+        },
+        {
+          label: 'Save',
+          accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
+          click: async () => {
+            if (!mainWindow) return;
+            try {
+              const filePath = await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
+              if (filePath) {
+                mainWindow.setTitle(`Arborator - ${path.basename(filePath)}`);
+              }
+            } catch (error) {
+              console.error('Error during save:', error);
+            }
+          }
+        },
+        {
+          label: 'Save As...',
+          accelerator: process.platform === 'darwin' ? 'Shift+Cmd+S' : 'Ctrl+Shift+S',
+          click: async () => {
+            if (!mainWindow) return;
+            
+            // Force a new save dialog by clearing the current filename
+            await mainWindow.webContents.executeJavaScript('window.currentFileName = null');
+            
+            try {
+              const filePath = await mainWindow.webContents.executeJavaScript('window.canvasManager.save()');
+              if (filePath) {
+                mainWindow.setTitle(`Arborator - ${path.basename(filePath)}`);
+              }
+            } catch (error) {
+              console.error('Error during save as:', error);
+            }
+          }
+        },
         { type: 'separator' },
         { 
           label: 'Quit',
@@ -36,25 +126,32 @@ function createMenu() {
     {
       label: 'Edit',
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        // { role: 'undo' },
+        // { role: 'redo' },
+        // { type: 'separator' },
+        // { role: 'cut' },
+        // { role: 'copy' },
+        // { role: 'paste' },
+        { 
+          label: 'Delete',
+          accelerator: 'Delete',
+          click: () => {
+            mainWindow?.webContents.send('delete-selected');
+          }
+        },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'delete' },
-        { type: 'separator' },
-        { role: 'selectAll' }
+        { 
+          label: 'Select All',
+          accelerator: process.platform === 'darwin' ? 'Cmd+A' : 'Ctrl+A',
+          click: () => {
+            mainWindow?.webContents.send('select-all-nodes');
+          }
+        }
       ]
     },
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
@@ -71,13 +168,13 @@ function createMenu() {
         }
       ]
     },
-    {
+    /*{
       label: 'Window',
       submenu: [
         { role: 'minimize' },
         { role: 'zoom' }
       ]
-    }
+    }*/
   ]
 
   const menu = Menu.buildFromTemplate(template)

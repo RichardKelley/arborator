@@ -16,6 +16,8 @@ declare global {
             saveBlackboards: (jsonData: string) => Promise<string | undefined>;
             exportTrees: (jsonData: string) => Promise<string | undefined>;
             exportCanvas: (jsonData: string) => Promise<string | undefined>;
+            onSelectAll: (callback: () => void) => void;
+            onDelete: (callback: () => void) => void;
         }
     }
 }
@@ -109,6 +111,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             console.error('Failed to export canvas:', error);
             throw error;
         }
+    },
+    onSelectAll: (callback: () => void) => {
+        ipcRenderer.on('select-all-nodes', () => callback());
+    },
+    onDelete: (callback: () => void) => {
+        ipcRenderer.on('delete-selected', () => callback());
     }
 });
 
