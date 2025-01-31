@@ -1033,46 +1033,92 @@ class CanvasManager {
     }
 
     // Update method to update node custom name with validation
-    updateNodeCustomName(nodeId: string, customName: string) {
-        // Don't save state if validation fails
-        if (customName && this.usedNames.has(customName)) {
-            // Show error message
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'error-message';
-            errorMessage.textContent = 'This name is already in use';
-            errorMessage.style.position = 'fixed';
-            errorMessage.style.top = '20px';
-            errorMessage.style.left = '50%';
-            errorMessage.style.transform = 'translateX(-50%)';
-            errorMessage.style.backgroundColor = '#ff4444';
-            errorMessage.style.color = 'white';
-            errorMessage.style.padding = '10px 20px';
-            errorMessage.style.borderRadius = '5px';
-            errorMessage.style.zIndex = '1000';
-            document.body.appendChild(errorMessage);
-            setTimeout(() => document.body.removeChild(errorMessage), 3000);
-
-            // Reset the input in the right column
-            const node = this.nodes.find(n => n.id === nodeId);
-            if (node) {
-                (window as any).rightColumn.resetCustomNameInput(node.customName || '');
-            }
-            return;
-        }
-        this.saveState();
+    async updateNodeCustomName(nodeId: string, customName: string) {
         const node = this.nodes.find(n => n.id === nodeId);
-        if (node) {
-            // Remove old name from used names if it exists
-            if (node.customName) {
-                this.usedNames.delete(node.customName);
+        if (!node) return;
+
+        // Don't save state if validation fails
+        if (customName) {
+            // Only check against built-in names if this is NOT a custom node
+            const isCustomNode = node.name === 'CustomAction' || node.name === 'CustomCondition';
+            let shouldCheckBuiltInNames = !isCustomNode;
+
+            if (shouldCheckBuiltInNames) {
+                // Get node types to check against built-in names
+                const nodeTypes = await window.electronAPI.getNodeTypes();
+                const builtInNames = new Set<string>();
+                
+                // Collect all built-in node names
+                if (nodeTypes.root) {
+                    builtInNames.add(nodeTypes.root.name);
+                }
+                ['actions', 'conditions', 'controls', 'decorators'].forEach(category => {
+                    if (Array.isArray(nodeTypes[category])) {
+                        nodeTypes[category].forEach((node: any) => {
+                            builtInNames.add(node.name);
+                        });
+                    }
+                });
+                if (nodeTypes.blackboard) {
+                    builtInNames.add(nodeTypes.blackboard.name);
+                }
+
+                if (builtInNames.has(customName)) {
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'error-message';
+                    errorMessage.textContent = 'This name conflicts with a built-in node type';
+                    errorMessage.style.position = 'fixed';
+                    errorMessage.style.top = '20px';
+                    errorMessage.style.left = '50%';
+                    errorMessage.style.transform = 'translateX(-50%)';
+                    errorMessage.style.backgroundColor = '#ff4444';
+                    errorMessage.style.color = 'white';
+                    errorMessage.style.padding = '10px 20px';
+                    errorMessage.style.borderRadius = '5px';
+                    errorMessage.style.zIndex = '1000';
+                    document.body.appendChild(errorMessage);
+                    setTimeout(() => document.body.removeChild(errorMessage), 3000);
+
+                    // Reset the input in the right column
+                    (window as any).rightColumn.resetCustomNameInput(node.customName || '');
+                    return;
+                }
             }
-            // Add new name to used names if it's not empty
-            if (customName) {
-                this.usedNames.add(customName);
+
+            // Always check against other custom names (except the node's own current name)
+            if (this.usedNames.has(customName) && customName !== node.customName) {
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'error-message';
+                errorMessage.textContent = 'This name is already in use';
+                errorMessage.style.position = 'fixed';
+                errorMessage.style.top = '20px';
+                errorMessage.style.left = '50%';
+                errorMessage.style.transform = 'translateX(-50%)';
+                errorMessage.style.backgroundColor = '#ff4444';
+                errorMessage.style.color = 'white';
+                errorMessage.style.padding = '10px 20px';
+                errorMessage.style.borderRadius = '5px';
+                errorMessage.style.zIndex = '1000';
+                document.body.appendChild(errorMessage);
+                setTimeout(() => document.body.removeChild(errorMessage), 3000);
+
+                // Reset the input in the right column
+                (window as any).rightColumn.resetCustomNameInput(node.customName || '');
+                return;
             }
-            node.customName = customName;
-            this.draw();
         }
+
+        this.saveState();
+        // Remove old name from used names if it exists
+        if (node.customName) {
+            this.usedNames.delete(node.customName);
+        }
+        // Add new name to used names if it's not empty
+        if (customName) {
+            this.usedNames.add(customName);
+        }
+        node.customName = customName;
+        this.draw();
     }
 
     // Add method to update node custom type

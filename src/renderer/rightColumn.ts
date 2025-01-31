@@ -104,24 +104,24 @@ class RightColumn {
         });
         
         // Handle enter key press
-        this.customNameInput.addEventListener('keydown', (e) => {
+        this.customNameInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter' && this.currentNode) {
                 e.preventDefault();
                 const target = e.target as HTMLInputElement;
                 // Only update if the value is different from the current node's custom name
                 if (target.value !== (this.currentNode.customName || '')) {
-                    (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                    await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
                 }
                 target.blur(); // Remove focus from input
             }
         });
         
         // Only update if value has changed
-        this.customNameInput.addEventListener('blur', (e) => {
+        this.customNameInput.addEventListener('blur', async (e) => {
             const target = e.target as HTMLInputElement;
             // Only update if the value is different from the current node's custom name
             if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
-                (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
         
@@ -169,24 +169,24 @@ class RightColumn {
         });
         
         // Handle enter key press
-        this.customNameInput.addEventListener('keydown', (e) => {
+        this.customNameInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter' && this.currentNode) {
                 e.preventDefault();
                 const target = e.target as HTMLInputElement;
                 // Only update if the value is different from the current node's custom name
                 if (target.value !== (this.currentNode.customName || '')) {
-                    (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                    await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
                 }
                 target.blur(); // Remove focus from input
             }
         });
         
         // Only update if value has changed
-        this.customNameInput.addEventListener('blur', (e) => {
+        this.customNameInput.addEventListener('blur', async (e) => {
             const target = e.target as HTMLInputElement;
             // Only update if the value is different from the current node's custom name
             if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
-                (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
             }
         });
         
@@ -404,6 +404,8 @@ class RightColumn {
         if (this.currentNode && 
             this.customNameInput && 
             this.customNameInput.value !== this.originalCustomName) {
+            // We can't await here since clear() isn't async, but that's okay
+            // since this is just cleanup
             (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, this.customNameInput.value);
         }
         
