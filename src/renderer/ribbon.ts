@@ -205,8 +205,8 @@ function createFileButtons(content: HTMLElement) {
                 // Helper function to create tree structure recursively
                 const createTreeStructure = (node: any) => {
                     const nodeData: any = {
-                        type: node.type,
-                        name: node.name
+                        category: node.type,
+                        type: node.name  // Changed from 'name' to 'type' since this contains the actual type
                     };
 
                     // Add custom name and type if they exist
@@ -313,8 +313,8 @@ function createFileButtons(content: HTMLElement) {
                 // Helper function to create tree structure recursively
                 const createTreeStructure = (node: any) => {
                     const nodeData: any = {
-                        type: node.type,
-                        name: node.name
+                        category: node.type,
+                        type: node.name  // Changed from 'name' to 'type' since this contains the actual type
                     };
 
                     // Add custom name and type if they exist

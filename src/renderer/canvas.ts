@@ -1204,8 +1204,20 @@ class CanvasManager {
                 const displayNode = treeData.display.nodes.find((n: any) => n.id === logicalNode.id);
                 if (!displayNode) continue;
 
+                // Handle both 'type' and 'category' fields for backward compatibility
+                const nodeCategory = logicalNode.type || logicalNode.category;
+                if (!nodeCategory) continue;  // Skip if neither field is present
+
+                // For the node type/name, use either the 'name' field (old format) or 'type' field (new format)
+                const nodeName = logicalNode.name || logicalNode.type;
+                if (!nodeName) continue;  // Skip if no type/name is present
+
                 const node: CanvasNode = {
                     ...logicalNode,
+                    type: nodeCategory,  // This is the category (action, condition, etc)
+                    name: nodeName,      // This is the actual type (Sequence, GenerateAction, etc)
+                    // Generate new ID to avoid conflicts
+                    id: Math.random().toString(36).substr(2, 9),
                     x: displayNode.x,
                     y: displayNode.y,
                     width: displayNode.width,
@@ -1219,7 +1231,7 @@ class CanvasManager {
                 }
                 
                 this.nodes.push(node);
-                nodeMap.set(node.id, node);
+                nodeMap.set(logicalNode.id, node);  // Map the OLD id to the new node
             }
 
             // Track decorator child counts and node parents to validate connections
@@ -1380,18 +1392,29 @@ class CanvasManager {
                 const displayNode = treeData.display.nodes.find((n: any) => n.id === logicalNode.id);
                 if (!displayNode) continue;
 
+                // Handle both 'type' and 'category' fields for backward compatibility
+                const nodeCategory = logicalNode.type || logicalNode.category;
+                if (!nodeCategory) continue;  // Skip if neither field is present
+
+                // For the node type/name, use either the 'name' field (old format) or 'type' field (new format)
+                const nodeName = logicalNode.name || logicalNode.type;
+                if (!nodeName) continue;  // Skip if no type/name is present
+
                 const node: CanvasNode = {
                     ...logicalNode,
+                    type: nodeCategory,  // This is the category (action, condition, etc)
+                    name: nodeName,      // This is the actual type (Sequence, GenerateAction, etc)
                     // Generate new ID to avoid conflicts
                     id: Math.random().toString(36).substr(2, 9),
                     x: displayNode.x,
                     y: displayNode.y,
                     width: displayNode.width,
-                    height: displayNode.height
+                    height: displayNode.height,
+                    blackboardData: logicalNode.blackboardData || {}
                 };
                 
                 tempNodes.push(node);
-                nodeMap.set(logicalNode.id, node); // Map old ID to new node
+                nodeMap.set(logicalNode.id, node);  // Map the OLD id to the new node
             }
 
             // Find suitable position for the new tree
