@@ -126,12 +126,21 @@ function createMenu() {
     {
       label: 'Edit',
       submenu: [
-        // { role: 'undo' },
-        // { role: 'redo' },
-        // { type: 'separator' },
-        // { role: 'cut' },
-        // { role: 'copy' },
-        // { role: 'paste' },
+        { 
+          label: 'Undo',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Z' : 'Ctrl+Z',
+          click: () => {
+            mainWindow?.webContents.send('undo');
+          }
+        },
+        { 
+          label: 'Redo',
+          accelerator: process.platform === 'darwin' ? 'Shift+Cmd+Z' : 'Ctrl+Y',
+          click: () => {
+            mainWindow?.webContents.send('redo');
+          }
+        },
+        { type: 'separator' },
         { 
           label: 'Delete',
           accelerator: 'Delete',

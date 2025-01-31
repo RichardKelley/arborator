@@ -18,6 +18,8 @@ declare global {
             exportCanvas: (jsonData: string) => Promise<string | undefined>;
             onSelectAll: (callback: () => void) => void;
             onDelete: (callback: () => void) => void;
+            onUndo: (callback: () => void) => void;
+            onRedo: (callback: () => void) => void;
         }
     }
 }
@@ -117,6 +119,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onDelete: (callback: () => void) => {
         ipcRenderer.on('delete-selected', () => callback());
+    },
+    onUndo: (callback: () => void) => {
+        ipcRenderer.on('undo', () => callback());
+    },
+    onRedo: (callback: () => void) => {
+        ipcRenderer.on('redo', () => callback());
     }
 });
 

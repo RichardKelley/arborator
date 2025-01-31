@@ -53,6 +53,17 @@ class CanvasManager {
     private usedNames: Set<string> = new Set();
     private lastEvent: MouseEvent | null = null;
     private functionTemplates: Map<string, SubtreeTemplate> = new Map();
+    private undoStack: Array<{
+        nodes: CanvasNode[];
+        connections: Connection[];
+        usedNames: Set<string>;
+    }> = [];
+    private redoStack: Array<{
+        nodes: CanvasNode[];
+        connections: Connection[];
+        usedNames: Set<string>;
+    }> = [];
+    private static readonly MAX_UNDO_STACK_SIZE = 50;
     
     // Fixed dimensions for nodes
     private static readonly NODE_HEIGHT = 60;
@@ -86,6 +97,35 @@ class CanvasManager {
         window.addEventListener('resize', this.handleResize.bind(this));
         window.addEventListener('column-resize', this.handleResize.bind(this));
         this.handleResize();
+
+        // Add keyboard event listener for undo/redo
+        window.addEventListener('keydown', (e: KeyboardEvent) => {
+            // Don't handle keyboard shortcuts if user is typing in an input field
+            const activeElement = document.activeElement;
+            const isTyping = activeElement instanceof HTMLInputElement || 
+                            activeElement instanceof HTMLTextAreaElement;
+            if (isTyping) return;
+
+            // Check for Cmd+Z (Mac) or Ctrl+Z (Windows/Linux)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.undo();
+            }
+            // Check for Cmd+Shift+Z (Mac) or Ctrl+Y (Windows/Linux)
+            else if ((e.metaKey || e.ctrlKey) && 
+                    ((e.shiftKey && e.key === 'z') || (!e.shiftKey && e.key === 'y'))) {
+                e.preventDefault();
+                this.redo();
+            }
+        });
+
+        // Add IPC listeners for undo/redo
+        (window as any).electronAPI.onUndo(() => {
+            this.undo();
+        });
+        (window as any).electronAPI.onRedo(() => {
+            this.redo();
+        });
     }
 
     private handleResize() {
@@ -108,6 +148,7 @@ class CanvasManager {
     }
 
     async addNode(type: string, name: string, has_children: boolean) {
+        this.saveState();
         try {
             // Get the node type configuration
             const nodeTypes = await window.electronAPI.getNodeTypes();
@@ -184,6 +225,7 @@ class CanvasManager {
     }
 
     updateNodeConfigValue(nodeId: string, configName: string, key: string, value: any) {
+        this.saveState();
         const node = this.nodes.find(n => n.id === nodeId);
         if (node && node.configValues) {
             if (!node.configValues[configName]) {
@@ -629,6 +671,11 @@ class CanvasManager {
                     });
                 }
             }
+
+            // Only save state on the first drag movement
+            if (newX !== this.draggedNode.x || newY !== this.draggedNode.y) {
+                this.saveState();
+            }
         }
         
         // Handle panning
@@ -662,6 +709,7 @@ class CanvasManager {
             for (const node of this.nodes) {
                 if (node !== this.connectionStartNode && 
                     this.isOverConnectionPoint(node, x, y, true)) {
+                    this.saveState();  // Save state before creating connection
                     // If connecting to a root node that has a child, connect to its child instead
                     let targetNode = node;
                     if (node.type === 'root') {
@@ -954,6 +1002,7 @@ class CanvasManager {
 
     private deleteSelectedNodes() {
         if (this.selectedNodes.size > 0) {
+            this.saveState();
             // Remove custom names from used names
             this.selectedNodes.forEach(node => {
                 if (node.customName) {
@@ -976,6 +1025,7 @@ class CanvasManager {
 
     private deleteSelectedConnections() {
         if (this.selectedConnections.size > 0) {
+            this.saveState();
             this.connections = this.connections.filter(conn => !this.selectedConnections.has(conn));
             this.selectedConnections.clear();
             this.draw();
@@ -984,7 +1034,7 @@ class CanvasManager {
 
     // Update method to update node custom name with validation
     updateNodeCustomName(nodeId: string, customName: string) {
-        // Don't validate empty names - they're allowed
+        // Don't save state if validation fails
         if (customName && this.usedNames.has(customName)) {
             // Show error message
             const errorMessage = document.createElement('div');
@@ -1009,7 +1059,7 @@ class CanvasManager {
             }
             return;
         }
-
+        this.saveState();
         const node = this.nodes.find(n => n.id === nodeId);
         if (node) {
             // Remove old name from used names if it exists
@@ -1792,6 +1842,84 @@ class CanvasManager {
         });
 
         this.draw();
+    }
+
+    private saveState() {
+        // Create deep copies of the current state
+        const state = {
+            nodes: JSON.parse(JSON.stringify(this.nodes)),
+            connections: JSON.parse(JSON.stringify(this.connections)),
+            usedNames: new Set(Array.from(this.usedNames))
+        };
+
+        this.undoStack.push(state);
+        
+        // Clear redo stack when a new action is performed
+        this.redoStack = [];
+        
+        // Limit the stack size
+        if (this.undoStack.length > CanvasManager.MAX_UNDO_STACK_SIZE) {
+            this.undoStack.shift();
+        }
+    }
+
+    private restoreState(state: {
+        nodes: CanvasNode[];
+        connections: Connection[];
+        usedNames: Set<string>;
+    }) {
+        // First restore nodes
+        this.nodes = state.nodes;
+        this.usedNames = state.usedNames;
+
+        // Create a map of node IDs to actual node objects
+        const nodeMap = new Map<string, CanvasNode>();
+        this.nodes.forEach(node => nodeMap.set(node.id, node));
+
+        // Reconstruct connections with proper node references
+        this.connections = state.connections.map(conn => ({
+            fromNode: nodeMap.get(conn.fromNode.id)!,
+            toNode: nodeMap.get(conn.toNode.id)!
+        }));
+
+        // Clear selections since they might not be valid anymore
+        this.selectedNodes.clear();
+        this.selectedConnections.clear();
+        
+        // Update the right column
+        (window as any).rightColumn.clear();
+        
+        this.draw();
+    }
+
+    private undo() {
+        if (this.undoStack.length === 0) return;
+
+        // Save current state to redo stack before undoing
+        const currentState = {
+            nodes: JSON.parse(JSON.stringify(this.nodes)),
+            connections: JSON.parse(JSON.stringify(this.connections)),
+            usedNames: new Set(Array.from(this.usedNames))
+        };
+        this.redoStack.push(currentState);
+
+        const previousState = this.undoStack.pop()!;
+        this.restoreState(previousState);
+    }
+
+    private redo() {
+        if (this.redoStack.length === 0) return;
+
+        // Save current state to undo stack before redoing
+        const currentState = {
+            nodes: JSON.parse(JSON.stringify(this.nodes)),
+            connections: JSON.parse(JSON.stringify(this.connections)),
+            usedNames: new Set(Array.from(this.usedNames))
+        };
+        this.undoStack.push(currentState);
+
+        const nextState = this.redoStack.pop()!;
+        this.restoreState(nextState);
     }
 }
 
