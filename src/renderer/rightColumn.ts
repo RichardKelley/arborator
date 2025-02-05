@@ -409,10 +409,11 @@ class RightColumn {
             (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, this.customNameInput.value);
         }
         
-        // Only update custom type if it exists and has changed
+        // Only update custom type if it exists and has changed AND the node is a custom node
         if (this.currentNode && 
             this.customTypeInput && 
-            this.customTypeInput.value !== this.currentNode.customType) {
+            this.customTypeInput.value !== this.currentNode.customType &&
+            (this.currentNode.name === 'CustomAction' || this.currentNode.name === 'CustomCondition')) {
             (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, this.customTypeInput.value);
         }
 
