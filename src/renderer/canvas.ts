@@ -873,7 +873,7 @@ class CanvasManager {
         const isTyping = activeElement instanceof HTMLInputElement || 
                         activeElement instanceof HTMLTextAreaElement;
 
-        if (e.key === 'x') {
+        if (e.key === 'x' && !isTyping) {
             const numSelectedNodes = this.selectedNodes.size;
             const numSelectedConnections = this.selectedConnections.size;
             const totalSelected = numSelectedNodes + numSelectedConnections;
