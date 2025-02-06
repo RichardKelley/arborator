@@ -1064,9 +1064,9 @@ class CanvasManager {
     }
 
     // Update method to update node custom name with validation
-    async updateNodeCustomName(nodeId: string, customName: string) {
+    async updateNodeCustomName(nodeId: string, customName: string): Promise<boolean> {
         const node = this.nodes.find(n => n.id === nodeId);
-        if (!node) return;
+        if (!node) return false;
 
         // Don't save state if validation fails
         if (customName) {
@@ -1110,9 +1110,7 @@ class CanvasManager {
                     document.body.appendChild(errorMessage);
                     setTimeout(() => document.body.removeChild(errorMessage), 3000);
 
-                    // Reset the input in the right column
-                    (window as any).rightColumn.resetCustomNameInput(node.customName || '');
-                    return;
+                    return false;
                 }
             }
 
@@ -1133,23 +1131,35 @@ class CanvasManager {
                 document.body.appendChild(errorMessage);
                 setTimeout(() => document.body.removeChild(errorMessage), 3000);
 
-                // Reset the input in the right column
-                (window as any).rightColumn.resetCustomNameInput(node.customName || '');
-                return;
+                return false;
             }
         }
 
-        this.saveState();
         // Remove old name from used names if it exists
         if (node.customName) {
             this.usedNames.delete(node.customName);
         }
-        // Add new name to used names if it's not empty
+
+        // Add new name to used names if it exists
         if (customName) {
             this.usedNames.add(customName);
         }
+
+        // Update the node's custom name
         node.customName = customName;
+
+        // Update node_name in any config that has it
+        if (node.configValues) {
+            for (const configName in node.configValues) {
+                if (node.configValues[configName].hasOwnProperty('node_name')) {
+                    node.configValues[configName].node_name = customName;
+                }
+            }
+        }
+
+        this.saveState();
         this.draw();
+        return true;
     }
 
     // Add method to update node custom type

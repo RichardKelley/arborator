@@ -6,6 +6,7 @@ interface NodeConfig {
     customName?: string;
     customType?: string;
     configs?: string[];
+    configValues?: { [key: string]: { [key: string]: any } };
     blackboardData?: { [key: string]: any };
     n_times?: number;
     timelimit?: number;
@@ -77,26 +78,68 @@ class RightColumn {
             const target = e.target as HTMLInputElement;
             this.originalCustomName = target.value;
         });
+
+        // Add real-time synchronization
+        this.customNameInput.addEventListener('input', async (e) => {
+            const target = e.target as HTMLInputElement;
+            if (this.currentNode) {
+                // Update any config's node_name field in real-time
+                if (this.currentNode.configValues) {
+                    for (const configName in this.currentNode.configValues) {
+                        if (this.currentNode.configValues[configName].hasOwnProperty('node_name')) {
+                            // Update the config value directly for real-time sync
+                            this.currentNode.configValues[configName].node_name = target.value;
+                            // Also update the input field directly
+                            const configSection = this.container.querySelector(`.config-section[data-config-name="${configName}"]`);
+                            if (configSection) {
+                                const nodeNameInput = configSection.querySelector('input[data-field-name="node_name"]') as HTMLInputElement;
+                                if (nodeNameInput) {
+                                    nodeNameInput.value = target.value;
+                                }
+                            }
+                        }
+                    }
+                }
+                // Update the display
+                (window as any).canvasManager.draw();
+            }
+        });
         
         // Handle enter key press
         this.customNameInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter' && this.currentNode) {
                 e.preventDefault();
                 const target = e.target as HTMLInputElement;
-                // Only update if the value is different from the current node's custom name
-                if (target.value !== (this.currentNode.customName || '')) {
-                    await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
-                }
                 target.blur(); // Remove focus from input
             }
         });
         
-        // Only update if value has changed
+        // Validate uniqueness on blur
         this.customNameInput.addEventListener('blur', async (e) => {
             const target = e.target as HTMLInputElement;
-            // Only update if the value is different from the current node's custom name
-            if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
-                await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+            if (this.currentNode) {
+                // Validate and update through canvasManager which handles uniqueness
+                const success = await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                if (!success) {
+                    // If validation failed, restore the original name
+                    target.value = this.originalCustomName;
+                    // Also restore the config input values
+                    if (this.currentNode.configValues) {
+                        for (const configName in this.currentNode.configValues) {
+                            if (this.currentNode.configValues[configName].hasOwnProperty('node_name')) {
+                                this.currentNode.configValues[configName].node_name = this.originalCustomName;
+                                const configSection = this.container.querySelector(`.config-section[data-config-name="${configName}"]`);
+                                if (configSection) {
+                                    const nodeNameInput = configSection.querySelector('input[data-field-name="node_name"]') as HTMLInputElement;
+                                    if (nodeNameInput) {
+                                        nodeNameInput.value = this.originalCustomName;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    (window as any).canvasManager.draw();
+                }
             }
         });
         
@@ -263,25 +306,67 @@ class RightColumn {
             this.originalCustomName = target.value;
         });
         
+        // Add real-time synchronization
+        this.customNameInput.addEventListener('input', async (e) => {
+            const target = e.target as HTMLInputElement;
+            if (this.currentNode) {
+                // Update any config's node_name field in real-time
+                if (this.currentNode.configValues) {
+                    for (const configName in this.currentNode.configValues) {
+                        if (this.currentNode.configValues[configName].hasOwnProperty('node_name')) {
+                            // Update the config value directly for real-time sync
+                            this.currentNode.configValues[configName].node_name = target.value;
+                            // Also update the input field directly
+                            const configSection = this.container.querySelector(`.config-section[data-config-name="${configName}"]`);
+                            if (configSection) {
+                                const nodeNameInput = configSection.querySelector('input[data-field-name="node_name"]') as HTMLInputElement;
+                                if (nodeNameInput) {
+                                    nodeNameInput.value = target.value;
+                                }
+                            }
+                        }
+                    }
+                }
+                // Update the display
+                (window as any).canvasManager.draw();
+            }
+        });
+        
         // Handle enter key press
         this.customNameInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter' && this.currentNode) {
                 e.preventDefault();
                 const target = e.target as HTMLInputElement;
-                // Only update if the value is different from the current node's custom name
-                if (target.value !== (this.currentNode.customName || '')) {
-                    await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
-                }
                 target.blur(); // Remove focus from input
             }
         });
         
-        // Only update if value has changed
+        // Validate uniqueness on blur
         this.customNameInput.addEventListener('blur', async (e) => {
             const target = e.target as HTMLInputElement;
-            // Only update if the value is different from the current node's custom name
-            if (this.currentNode && target.value !== (this.currentNode.customName || '')) {
-                await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+            if (this.currentNode) {
+                // Validate and update through canvasManager which handles uniqueness
+                const success = await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, target.value);
+                if (!success) {
+                    // If validation failed, restore the original name
+                    target.value = this.originalCustomName;
+                    // Also restore the config input values
+                    if (this.currentNode.configValues) {
+                        for (const configName in this.currentNode.configValues) {
+                            if (this.currentNode.configValues[configName].hasOwnProperty('node_name')) {
+                                this.currentNode.configValues[configName].node_name = this.originalCustomName;
+                                const configSection = this.container.querySelector(`.config-section[data-config-name="${configName}"]`);
+                                if (configSection) {
+                                    const nodeNameInput = configSection.querySelector('input[data-field-name="node_name"]') as HTMLInputElement;
+                                    if (nodeNameInput) {
+                                        nodeNameInput.value = this.originalCustomName;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    (window as any).canvasManager.draw();
+                }
             }
         });
         
@@ -406,6 +491,7 @@ class RightColumn {
     private createConfigSection(configName: string, configData: any): HTMLElement {
         const section = document.createElement('div');
         section.className = 'config-section';
+        section.dataset.configName = configName;  // Add data attribute for config name
 
         const title = document.createElement('div');
         title.className = 'config-title';
@@ -432,6 +518,7 @@ class RightColumn {
 
             const input = document.createElement('input');
             input.type = this.getInputType(type as string);
+            input.dataset.fieldName = key;  // Add data attribute for field name
             
             // Set current value if it exists
             const currentValue = configValues[key];
@@ -462,17 +549,51 @@ class RightColumn {
                         value = input.value;
                 }
 
-                (window as any).canvasManager.updateNodeConfigValue(
-                    this.currentNode.id,
-                    configName,
-                    key,
-                    value
-                );
+                // If this is the node_name field, handle it specially
+                if (key === 'node_name') {
+                    // For real-time updates, update the custom name input
+                    if (this.customNameInput) {
+                        this.customNameInput.value = value;
+                    }
+                    // Update the config value directly for real-time sync
+                    this.currentNode.configValues![configName].node_name = value;
+                    // Update the display
+                    (window as any).canvasManager.draw();
+                } else {
+                    // For non-node_name fields, update normally
+                    (window as any).canvasManager.updateNodeConfigValue(
+                        this.currentNode.id,
+                        configName,
+                        key,
+                        value
+                    );
+                }
             };
 
-            // Update on both change and input events
-            input.addEventListener('change', updateValue);
+            // Update on input for real-time sync
             input.addEventListener('input', updateValue);
+
+            // For node_name field, add blur handler for validation
+            if (key === 'node_name') {
+                input.addEventListener('blur', async () => {
+                    if (!this.currentNode) return;
+                    // Validate and update through canvasManager which handles uniqueness
+                    const success = await (window as any).canvasManager.updateNodeCustomName(this.currentNode.id, input.value);
+                    if (!success) {
+                        // If validation failed, restore the original name
+                        input.value = this.originalCustomName;
+                        if (this.customNameInput) {
+                            this.customNameInput.value = this.originalCustomName;
+                        }
+                        // Restore the config value
+                        this.currentNode.configValues![configName].node_name = this.originalCustomName;
+                        (window as any).canvasManager.draw();
+                    }
+                });
+            } else {
+                // For non-node_name fields, keep the change handler
+                input.addEventListener('change', updateValue);
+            }
 
             field.appendChild(input);
             fields.appendChild(field);
