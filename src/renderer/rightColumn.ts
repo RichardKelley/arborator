@@ -7,6 +7,9 @@ interface NodeConfig {
     customType?: string;
     configs?: string[];
     blackboardData?: { [key: string]: any };
+    n_times?: number;
+    timelimit?: number;
+    child_key?: string;
 }
 
 class RightColumn {
@@ -54,35 +57,7 @@ class RightColumn {
             return;
         }
 
-        // Custom type input for CustomAction and CustomCondition nodes
-        if (node.name === 'CustomAction' || node.name === 'CustomCondition') {
-            const customTypeContainer = document.createElement('div');
-            customTypeContainer.className = 'custom-name-container';
-
-            const customTypeLabel = document.createElement('label');
-            customTypeLabel.className = 'custom-name-label';
-            customTypeLabel.textContent = 'Custom Type';
-            customTypeContainer.appendChild(customTypeLabel);
-
-            this.customTypeInput = document.createElement('input');
-            this.customTypeInput.className = 'custom-name-input';
-            this.customTypeInput.type = 'text';
-            this.customTypeInput.value = node.customType || '';
-            this.customTypeInput.placeholder = 'Enter the custom type';
-            
-            // Add event listener for input changes
-            this.customTypeInput.addEventListener('input', (e) => {
-                const target = e.target as HTMLInputElement;
-                if (this.currentNode) {
-                    (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, target.value);
-                }
-            });
-            
-            customTypeContainer.appendChild(this.customTypeInput);
-            this.container.appendChild(customTypeContainer);
-        }
-
-        // Custom name input
+        // Custom name input (moved before n_times for Repeat and Retry)
         const customNameContainer = document.createElement('div');
         customNameContainer.className = 'custom-name-container';
 
@@ -127,6 +102,126 @@ class RightColumn {
         
         customNameContainer.appendChild(this.customNameInput);
         this.container.appendChild(customNameContainer);
+
+        // Add n_times input for Repeat and Retry decorators
+        if (node.name === 'Repeat' || node.name === 'Retry') {
+            const nTimesContainer = document.createElement('div');
+            nTimesContainer.className = 'custom-name-container';
+
+            const nTimesLabel = document.createElement('label');
+            nTimesLabel.className = 'custom-name-label';
+            nTimesLabel.textContent = 'Number of times';
+            nTimesContainer.appendChild(nTimesLabel);
+
+            const nTimesInput = document.createElement('input');
+            nTimesInput.className = 'custom-name-input';
+            nTimesInput.type = 'number';
+            nTimesInput.min = '0';
+            nTimesInput.step = '1';
+            nTimesInput.value = (node.n_times ?? 1).toString();
+            
+            // Add event listener for input changes
+            nTimesInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                const value = parseInt(target.value);
+                if (!isNaN(value) && value >= 0) {
+                    if (this.currentNode) {
+                        (window as any).canvasManager.updateNodeNTimes(this.currentNode.id, value);
+                    }
+                }
+            });
+            
+            nTimesContainer.appendChild(nTimesInput);
+            this.container.appendChild(nTimesContainer);
+        }
+
+        // Add timelimit input for Timeout decorator
+        if (node.name === 'Timeout') {
+            const timelimitContainer = document.createElement('div');
+            timelimitContainer.className = 'custom-name-container';
+
+            const timelimitLabel = document.createElement('label');
+            timelimitLabel.className = 'custom-name-label';
+            timelimitLabel.textContent = 'Time limit (ms)';
+            timelimitContainer.appendChild(timelimitLabel);
+
+            const timelimitInput = document.createElement('input');
+            timelimitInput.className = 'custom-name-input';
+            timelimitInput.type = 'number';
+            timelimitInput.min = '0';
+            timelimitInput.step = '1';
+            timelimitInput.value = (node.timelimit ?? 1000).toString();
+            
+            // Add event listener for input changes
+            timelimitInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                const value = parseInt(target.value);
+                if (!isNaN(value) && value >= 0) {
+                    if (this.currentNode) {
+                        (window as any).canvasManager.updateNodeTimeLimit(this.currentNode.id, value);
+                    }
+                }
+            });
+            
+            timelimitContainer.appendChild(timelimitInput);
+            this.container.appendChild(timelimitContainer);
+        }
+
+        // Add child_key input for History decorator
+        if (node.name === 'History') {
+            const childKeyContainer = document.createElement('div');
+            childKeyContainer.className = 'custom-name-container';
+
+            const childKeyLabel = document.createElement('label');
+            childKeyLabel.className = 'custom-name-label';
+            childKeyLabel.textContent = 'Child Key';
+            childKeyContainer.appendChild(childKeyLabel);
+
+            const childKeyInput = document.createElement('input');
+            childKeyInput.className = 'custom-name-input';
+            childKeyInput.type = 'text';
+            childKeyInput.value = node.child_key || '';
+            childKeyInput.placeholder = 'Enter blackboard key to track';
+            
+            // Add event listener for input changes
+            childKeyInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                if (this.currentNode) {
+                    (window as any).canvasManager.updateNodeChildKey(this.currentNode.id, target.value);
+                }
+            });
+            
+            childKeyContainer.appendChild(childKeyInput);
+            this.container.appendChild(childKeyContainer);
+        }
+
+        // Custom type input for CustomAction and CustomCondition nodes
+        if (node.name === 'CustomAction' || node.name === 'CustomCondition') {
+            const customTypeContainer = document.createElement('div');
+            customTypeContainer.className = 'custom-name-container';
+
+            const customTypeLabel = document.createElement('label');
+            customTypeLabel.className = 'custom-name-label';
+            customTypeLabel.textContent = 'Custom Type';
+            customTypeContainer.appendChild(customTypeLabel);
+
+            this.customTypeInput = document.createElement('input');
+            this.customTypeInput.className = 'custom-name-input';
+            this.customTypeInput.type = 'text';
+            this.customTypeInput.value = node.customType || '';
+            this.customTypeInput.placeholder = 'Enter the custom type';
+            
+            // Add event listener for input changes
+            this.customTypeInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                if (this.currentNode) {
+                    (window as any).canvasManager.updateNodeCustomType(this.currentNode.id, target.value);
+                }
+            });
+            
+            customTypeContainer.appendChild(this.customTypeInput);
+            this.container.appendChild(customTypeContainer);
+        }
 
         // Configs
         if (node.configs && node.configs.length > 0) {

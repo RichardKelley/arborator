@@ -206,7 +206,7 @@ function createFileButtons(content: HTMLElement) {
                 const createTreeStructure = (node: any) => {
                     const nodeData: any = {
                         category: node.type,
-                        type: node.name  // Changed from 'name' to 'type' since this contains the actual type
+                        type: node.name === 'History' ? 'BlackboardHistory' : node.name  // Change History to BlackboardHistory
                     };
 
                     // Add custom name and type if they exist
@@ -215,6 +215,20 @@ function createFileButtons(content: HTMLElement) {
                     }
                     if (node.customType) {
                         nodeData.custom_type = node.customType;
+                    }
+                    // Add n_times for Repeat and Retry nodes
+                    if ((node.name === 'Repeat' || node.name === 'Retry') && typeof node.n_times === 'number') {
+                        nodeData.n_times = node.n_times;
+                    }
+
+                    // Add timelimit for Timeout decorator
+                    if (node.name === 'Timeout' && node.timelimit !== undefined) {
+                        nodeData.timelimit = node.timelimit;
+                    }
+
+                    // Add child_key for History decorator
+                    if (node.name === 'History' && node.child_key !== undefined) {
+                        nodeData.child_key = node.child_key;
                     }
 
                     // If this is a root node, find its associated blackboard
@@ -314,7 +328,7 @@ function createFileButtons(content: HTMLElement) {
                 const createTreeStructure = (node: any) => {
                     const nodeData: any = {
                         category: node.type,
-                        type: node.name  // Changed from 'name' to 'type' since this contains the actual type
+                        type: node.name === 'History' ? 'BlackboardHistory' : node.name  // Change History to BlackboardHistory
                     };
 
                     // Add custom name and type if they exist
@@ -323,6 +337,20 @@ function createFileButtons(content: HTMLElement) {
                     }
                     if (node.customType) {
                         nodeData.custom_type = node.customType;
+                    }
+                    // Add n_times for Repeat and Retry nodes
+                    if ((node.name === 'Repeat' || node.name === 'Retry') && typeof node.n_times === 'number') {
+                        nodeData.n_times = node.n_times;
+                    }
+
+                    // Add timelimit for Timeout decorator
+                    if (node.name === 'Timeout' && node.timelimit !== undefined) {
+                        nodeData.timelimit = node.timelimit;
+                    }
+
+                    // Add child_key for History decorator
+                    if (node.name === 'History' && node.child_key !== undefined) {
+                        nodeData.child_key = node.child_key;
                     }
 
                     // If this is a root node, find its associated blackboard

@@ -13,6 +13,9 @@ interface CanvasNode {
     configValues?: { [key: string]: { [key: string]: any } };
     blackboardData?: { [key: string]: any };
     collapsed?: boolean;
+    n_times?: number;  // Number of times to repeat for Repeat decorator
+    timelimit?: number;  // Time limit for Timeout decorator
+    child_key?: string;  // Child key for History decorator
 }
 
 interface Connection {
@@ -187,6 +190,16 @@ class CanvasManager {
                 configs,
                 configValues: {}
             };
+
+            // Initialize n_times for Repeat nodes
+            if (name === 'Repeat') {
+                node.n_times = 1;  // Default to 1 repetition
+            }
+
+            // Initialize timelimit for Timeout nodes
+            if (name === 'Timeout') {
+                node.timelimit = 1000;  // Default to 1000ms
+            }
 
             // Initialize empty config values
             if (configs.length > 0) {
@@ -709,26 +722,44 @@ class CanvasManager {
             for (const node of this.nodes) {
                 if (node !== this.connectionStartNode && 
                     this.isOverConnectionPoint(node, x, y, true)) {
-                    this.saveState();  // Save state before creating connection
-                    // If connecting to a root node that has a child, connect to its child instead
-                    let targetNode = node;
-                    if (node.type === 'root') {
-                        const children = this.getNodeChildren(node);
-                        const regularChild = children.find(child => child.type !== 'blackboard');
-                        if (regularChild) {
-                            // Remove the root node and its connections
-                            this.nodes = this.nodes.filter(n => n !== node);
-                            this.connections = this.connections.filter(conn => 
-                                conn.fromNode !== node && conn.toNode !== node
+                    
+                    // Special handling for Root nodes
+                    if (node.type === 'root' || this.connectionStartNode.type === 'root') {
+                        const rootNode = node.type === 'root' ? node : this.connectionStartNode;
+                        const targetNode = node.type === 'root' ? this.connectionStartNode : node;
+                        
+                        // Get existing children of the root node
+                        const existingConnections = this.connections.filter(conn => 
+                            conn.fromNode === rootNode
+                        );
+                        
+                        // If connecting to/from a blackboard node
+                        if (targetNode.type === 'blackboard') {
+                            // Check if root already has a blackboard child
+                            const hasBlackboard = existingConnections.some(conn => 
+                                conn.toNode.type === 'blackboard'
                             );
-                            targetNode = regularChild;
+                            if (hasBlackboard) {
+                                this.showErrorMessage('Root node already has a blackboard child');
+                                return;
+                            }
+                        } else {
+                            // Check if root already has a non-blackboard child
+                            const hasNonBlackboard = existingConnections.some(conn => 
+                                conn.toNode.type !== 'blackboard'
+                            );
+                            if (hasNonBlackboard) {
+                                this.showErrorMessage('Root node already has a non-blackboard child');
+                                return;
+                            }
                         }
                     }
 
+                    this.saveState();  // Save state before creating connection
                     // Create the connection
                     this.connections.push({
                         fromNode: this.connectionStartNode,
-                        toNode: targetNode
+                        toNode: node
                     });
                     break;
                 }
@@ -1142,7 +1173,9 @@ class CanvasManager {
             has_children: node.has_children,
             configs: node.configs,
             configValues: node.configValues,
-            blackboardData: node.blackboardData
+            blackboardData: node.blackboardData,
+            n_times: node.n_times,  // Include n_times in serialization
+            timelimit: node.timelimit  // Include timelimit in serialization
         }));
 
         // Create a simplified version of connections using node IDs
@@ -1222,7 +1255,8 @@ class CanvasManager {
                     y: displayNode.y,
                     width: displayNode.width,
                     height: displayNode.height,
-                    blackboardData: logicalNode.blackboardData || {}
+                    blackboardData: logicalNode.blackboardData || {},
+                    timelimit: logicalNode.timelimit  // Include timelimit in deserialization
                 };
                 
                 // Add custom name to used names if it exists
@@ -1410,7 +1444,8 @@ class CanvasManager {
                     y: displayNode.y,
                     width: displayNode.width,
                     height: displayNode.height,
-                    blackboardData: logicalNode.blackboardData || {}
+                    blackboardData: logicalNode.blackboardData || {},
+                    timelimit: logicalNode.timelimit  // Include timelimit in deserialization
                 };
                 
                 tempNodes.push(node);
@@ -1989,6 +2024,35 @@ class CanvasManager {
 
         const nextState = this.redoStack.pop()!;
         this.restoreState(nextState);
+    }
+
+    updateNodeNTimes(nodeId: string, n_times: number) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node && (node.name === 'Repeat' || node.name === 'Retry')) {
+            this.saveState();
+            node.n_times = n_times;
+            this.draw();
+        }
+    }
+
+    // Add method to update node timelimit
+    updateNodeTimeLimit(nodeId: string, timelimit: number) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node && node.name === 'Timeout') {
+            this.saveState();
+            node.timelimit = timelimit;
+            this.draw();
+        }
+    }
+
+    // Add method to update node child_key
+    updateNodeChildKey(nodeId: string, child_key: string) {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (node && node.name === 'History') {
+            this.saveState();
+            node.child_key = child_key;
+            this.draw();
+        }
     }
 }
 
