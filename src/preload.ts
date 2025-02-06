@@ -20,6 +20,10 @@ declare global {
             onDelete: (callback: () => void) => void;
             onUndo: (callback: () => void) => void;
             onRedo: (callback: () => void) => void;
+            exportCanvasData: () => Promise<string | null>;
+            exportTreesData: () => Promise<string | null>;
+            exportBlackboardsData: () => Promise<string | null>;
+            writeExportFile: (args: { filePath: string, data: string }) => Promise<boolean>;
         }
     }
 }
@@ -125,7 +129,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onRedo: (callback: () => void) => {
         ipcRenderer.on('redo', () => callback());
-    }
+    },
+    exportCanvasData: () => ipcRenderer.invoke('export-canvas-data'),
+    exportTreesData: () => ipcRenderer.invoke('export-trees-data'),
+    exportBlackboardsData: () => ipcRenderer.invoke('export-blackboards-data'),
+    writeExportFile: (args: { filePath: string, data: string }) => ipcRenderer.invoke('write-export-file', args)
 });
 
 window.addEventListener('DOMContentLoaded', () => {

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 
 app.name = 'Arborator'
 
@@ -13,6 +14,77 @@ ipcMain.handle('get-theme-state', () => isDarkMode);
 ipcMain.on('set-theme-state', (_, dark) => {
     isDarkMode = dark;
     createMenu(); // Recreate menu to update checkmark
+});
+
+// Add IPC handlers for exports
+ipcMain.handle('export-canvas-data', async () => {
+    if (!mainWindow) return null;
+    try {
+        const filePath = await dialog.showSaveDialog(mainWindow, {
+            title: 'Export Canvas',
+            defaultPath: 'canvas.json',
+            filters: [
+                { name: 'JSON Files', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['createDirectory', 'showOverwriteConfirmation']
+        });
+
+        return filePath.filePath;
+    } catch (error) {
+        console.error('Error in export-canvas-data:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('export-trees-data', async () => {
+    if (!mainWindow) return null;
+    try {
+        const filePath = await dialog.showSaveDialog(mainWindow, {
+            title: 'Export Trees',
+            defaultPath: 'trees.json',
+            filters: [
+                { name: 'JSON Files', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['createDirectory', 'showOverwriteConfirmation']
+        });
+
+        return filePath.filePath;
+    } catch (error) {
+        console.error('Error in export-trees-data:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('export-blackboards-data', async () => {
+    if (!mainWindow) return null;
+    try {
+        const filePath = await dialog.showSaveDialog(mainWindow, {
+            title: 'Export Blackboards',
+            defaultPath: 'blackboards.json',
+            filters: [
+                { name: 'JSON Files', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['createDirectory', 'showOverwriteConfirmation']
+        });
+
+        return filePath.filePath;
+    } catch (error) {
+        console.error('Error in export-blackboards-data:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('write-export-file', async (_, { filePath, data }) => {
+    try {
+        await fs.promises.writeFile(filePath, data);
+        return true;
+    } catch (error) {
+        console.error('Error writing export file:', error);
+        return false;
+    }
 });
 
 function createMenu() {
@@ -108,6 +180,279 @@ function createMenu() {
               }
             } catch (error) {
               console.error('Error during save as:', error);
+            }
+          }
+        },
+        { type: 'separator' },
+        { 
+          label: 'Export Canvas',
+          click: async () => {
+            if (!mainWindow) return;
+            try {
+              await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                  try {
+                    const filePath = await window.electronAPI.exportCanvasData();
+                    if (!filePath) return;
+
+                    const nodesWithConfigs = window.canvasManager.nodes.filter(node => 
+                      node.configs && node.configs.length > 0 && node.configValues
+                    );
+
+                    // Create configs mapping
+                    const configsMap = {};
+                    const nodeConfigMap = new Map();
+
+                    nodesWithConfigs.forEach(node => {
+                      if (node.configValues) {
+                        const configMapping = {};
+                        Object.entries(node.configValues).forEach(([configType, configData]) => {
+                          const configId = Math.random().toString(36).substr(2, 9);
+                          configsMap[configId] = {
+                            type: configType,
+                            values: configData
+                          };
+                          configMapping[configType] = configId;
+                        });
+                        nodeConfigMap.set(node.id, configMapping);
+                      }
+                    });
+
+                    // Get blackboard nodes
+                    const blackboardNodes = window.canvasManager.nodes.filter(node => node.type === 'blackboard');
+                    const blackboardsMap = {};
+                    blackboardNodes.forEach(node => {
+                      const blackboardName = node.customName || 'default';
+                      blackboardsMap[blackboardName] = node.blackboardData || {};
+                    });
+
+                    // Get root nodes and create tree structure
+                    const rootNodes = window.canvasManager.nodes.filter(node => node.type === 'root');
+                    const treesMap = {};
+
+                    const createTreeStructure = (node) => {
+                      const nodeData = {
+                        category: node.type,
+                        type: node.name === 'History' ? 'BlackboardHistory' : node.name
+                      };
+
+                      if (node.customName) nodeData.custom_name = node.customName;
+                      if (node.customType) nodeData.custom_type = node.customType;
+                      if ((node.name === 'Repeat' || node.name === 'Retry') && typeof node.n_times === 'number') {
+                        nodeData.n_times = node.n_times;
+                      }
+                      if (node.name === 'Timeout' && node.timelimit !== undefined) {
+                        nodeData.timelimit = node.timelimit;
+                      }
+                      if (node.name === 'History' && node.child_key !== undefined) {
+                        nodeData.child_key = node.child_key;
+                      }
+
+                      if (node.type === 'root') {
+                        nodeData.blackboard = null;
+                        const children = window.canvasManager.getNodeChildren(node);
+                        const blackboardNode = children.find(child => child.type === 'blackboard');
+                        if (blackboardNode) {
+                          nodeData.blackboard = blackboardNode.customName || 'default';
+                        }
+                      }
+
+                      if (nodeConfigMap.has(node.id)) {
+                        nodeData.configs = Object.fromEntries(
+                          Object.entries(nodeConfigMap.get(node.id))
+                        );
+                      }
+
+                      const children = window.canvasManager.getNodeChildren(node)
+                        .filter(child => child.type !== 'blackboard')
+                        .sort((a, b) => a.x - b.x);
+
+                      if (children.length > 0) {
+                        nodeData.children = children.map(child => createTreeStructure(child));
+                      }
+
+                      return nodeData;
+                    };
+
+                    rootNodes.forEach((rootNode, index) => {
+                      const treeName = rootNode.customName || \`tree_\${index + 1}\`;
+                      treesMap[treeName] = createTreeStructure(rootNode);
+                    });
+
+                    // Create final export data
+                    const exportData = {
+                      configs: configsMap,
+                      blackboards: blackboardsMap,
+                      trees: treesMap
+                    };
+
+                    const success = await window.electronAPI.writeExportFile({
+                      filePath,
+                      data: JSON.stringify(exportData, null, 2)
+                    });
+
+                    if (success) {
+                      console.log('Canvas exported successfully');
+                    }
+                  } catch (error) {
+                    console.error('Error during canvas export:', error);
+                  }
+                })();
+              `);
+            } catch (error) {
+              console.error('Error during canvas export:', error);
+            }
+          }
+        },
+        { 
+          label: 'Export Trees',
+          click: async () => {
+            if (!mainWindow) return;
+            try {
+              await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                  try {
+                    const filePath = await window.electronAPI.exportTreesData();
+                    if (!filePath) return;
+
+                    const nodesWithConfigs = window.canvasManager.nodes.filter(node => 
+                      node.configs && node.configs.length > 0 && node.configValues
+                    );
+
+                    // Create configs mapping
+                    const configsMap = {};
+                    const nodeConfigMap = new Map();
+
+                    nodesWithConfigs.forEach(node => {
+                      if (node.configValues) {
+                        const configMapping = {};
+                        Object.entries(node.configValues).forEach(([configType, configData]) => {
+                          const configId = Math.random().toString(36).substr(2, 9);
+                          configsMap[configId] = {
+                            type: configType,
+                            values: configData
+                          };
+                          configMapping[configType] = configId;
+                        });
+                        nodeConfigMap.set(node.id, configMapping);
+                      }
+                    });
+
+                    // Get root nodes and create tree structure
+                    const rootNodes = window.canvasManager.nodes.filter(node => node.type === 'root');
+                    const treesMap = {};
+
+                    const createTreeStructure = (node) => {
+                      const nodeData = {
+                        category: node.type,
+                        type: node.name === 'History' ? 'BlackboardHistory' : node.name
+                      };
+
+                      if (node.customName) nodeData.custom_name = node.customName;
+                      if (node.customType) nodeData.custom_type = node.customType;
+                      if ((node.name === 'Repeat' || node.name === 'Retry') && typeof node.n_times === 'number') {
+                        nodeData.n_times = node.n_times;
+                      }
+                      if (node.name === 'Timeout' && node.timelimit !== undefined) {
+                        nodeData.timelimit = node.timelimit;
+                      }
+                      if (node.name === 'History' && node.child_key !== undefined) {
+                        nodeData.child_key = node.child_key;
+                      }
+
+                      if (node.type === 'root') {
+                        nodeData.blackboard = null;
+                        const children = window.canvasManager.getNodeChildren(node);
+                        const blackboardNode = children.find(child => child.type === 'blackboard');
+                        if (blackboardNode) {
+                          nodeData.blackboard = blackboardNode.customName || 'default';
+                        }
+                      }
+
+                      if (nodeConfigMap.has(node.id)) {
+                        nodeData.configs = Object.fromEntries(
+                          Object.entries(nodeConfigMap.get(node.id))
+                        );
+                      }
+
+                      const children = window.canvasManager.getNodeChildren(node)
+                        .filter(child => child.type !== 'blackboard')
+                        .sort((a, b) => a.x - b.x);
+
+                      if (children.length > 0) {
+                        nodeData.children = children.map(child => createTreeStructure(child));
+                      }
+
+                      return nodeData;
+                    };
+
+                    rootNodes.forEach((rootNode, index) => {
+                      const treeName = rootNode.customName || \`tree_\${index + 1}\`;
+                      treesMap[treeName] = createTreeStructure(rootNode);
+                    });
+
+                    // Create final export data
+                    const exportData = {
+                      configs: configsMap,
+                      trees: treesMap
+                    };
+
+                    const success = await window.electronAPI.writeExportFile({
+                      filePath,
+                      data: JSON.stringify(exportData, null, 2)
+                    });
+
+                    if (success) {
+                      console.log('Trees exported successfully');
+                    }
+                  } catch (error) {
+                    console.error('Error during trees export:', error);
+                  }
+                })();
+              `);
+            } catch (error) {
+              console.error('Error during trees export:', error);
+            }
+          }
+        },
+        { 
+          label: 'Export Blackboards',
+          click: async () => {
+            if (!mainWindow) return;
+            try {
+              await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                  try {
+                    const filePath = await window.electronAPI.exportBlackboardsData();
+                    if (!filePath) return;
+
+                    const blackboardNodes = window.canvasManager.nodes.filter(node => node.type === 'blackboard');
+                    
+                    if (blackboardNodes.length === 0) {
+                      console.log('No blackboards found to export');
+                      return;
+                    }
+
+                    const blackboardsData = blackboardNodes.map(node => ({
+                      name: node.customName || 'default',
+                      kv: node.blackboardData || {}
+                    }));
+
+                    const success = await window.electronAPI.writeExportFile({
+                      filePath,
+                      data: JSON.stringify(blackboardsData, null, 2)
+                    });
+
+                    if (success) {
+                      console.log('Blackboards exported successfully');
+                    }
+                  } catch (error) {
+                    console.error('Error during blackboards export:', error);
+                  }
+                })();
+              `);
+            } catch (error) {
+              console.error('Error during blackboards export:', error);
             }
           }
         },
