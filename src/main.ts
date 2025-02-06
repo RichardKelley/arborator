@@ -486,6 +486,10 @@ function createMenu() {
           }
         },
         { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { type: 'separator' },
         { 
           label: 'Delete',
           accelerator: 'Delete',

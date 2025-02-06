@@ -2054,6 +2054,67 @@ class CanvasManager {
             this.draw();
         }
     }
+
+    public getSelectedNodesData() {
+        if (this.selectedNodes.size === 0) return null;
+
+        const selectedNodesData = {
+            nodes: Array.from(this.selectedNodes).map(node => ({
+                ...node,
+                x: node.x,
+                y: node.y,
+                id: undefined // Clear the ID so a new one will be generated on paste
+            })),
+            connections: Array.from(this.connections)
+                .filter(conn => 
+                    this.selectedNodes.has(conn.fromNode) && 
+                    this.selectedNodes.has(conn.toNode)
+                )
+                .map(conn => ({
+                    fromIndex: Array.from(this.selectedNodes).findIndex(n => n === conn.fromNode),
+                    toIndex: Array.from(this.selectedNodes).findIndex(n => n === conn.toNode)
+                }))
+        };
+
+        return selectedNodesData;
+    }
+
+    public pasteNodes(data: { nodes: any[], connections: { fromIndex: number, toIndex: number }[] }) {
+        // Clear current selection
+        this.selectedNodes.clear();
+        this.selectedConnections.clear();
+
+        // Calculate paste offset (20 pixels to the right and down from original)
+        const offset = { x: 20, y: 20 };
+
+        // Create new nodes
+        const newNodes = data.nodes.map(nodeData => {
+            const node = { ...nodeData };
+            node.id = this.generateId(); // Generate new ID
+            node.x += offset.x;
+            node.y += offset.y;
+            this.nodes.push(node);
+            this.selectedNodes.add(node); // Select newly pasted node
+            return node;
+        });
+
+        // Recreate connections between pasted nodes
+        data.connections.forEach(conn => {
+            const fromNode = newNodes[conn.fromIndex];
+            const toNode = newNodes[conn.toIndex];
+            if (fromNode && toNode) {
+                const connection = { fromNode, toNode };
+                this.connections.push(connection);
+            }
+        });
+
+        // Update the view
+        this.draw();
+    }
+
+    private generateId(): string {
+        return Math.random().toString(36).substr(2, 9);
+    }
 }
 
 // Create and export the singleton instance
